@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chemidex — Atomic Visualization Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        bg: '#050508', surface: '#0a0a12', 'surface-2': '#0f0f1a',
+        accent: '#6366f1', 'accent-2': '#8b5cf6',
+      },
+      fontFamily: {
+        sans: ['Inter','system-ui','sans-serif'],
+        mono: ['JetBrains Mono','monospace'],
+      }
+    }
+  }
+}
+</script>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#050508;color:#e8e8f0;font-family:'Inter',sans-serif}
+#canvas-container{position:fixed;inset:0;z-index:0}
+
+/* Glassmorphism */
+.glass{background:rgba(10,10,18,.72);backdrop-filter:blur(16px) saturate(180%);-webkit-backdrop-filter:blur(16px) saturate(180%);border:1px solid rgba(255,255,255,.08)}
+.glass-light{background:rgba(15,15,26,.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.1)}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(99,102,241,.4);border-radius:2px}
+
+/* Loading */
+#loading-screen{position:fixed;inset:0;z-index:1000;background:#050508;display:flex;flex-direction:column;align-items:center;justify-content:center}
+
+/* Panels */
+#sidebar{transition:transform .3s cubic-bezier(.4,0,.2,1)}
+#sidebar.collapsed{transform:translateX(-100%)}
+#right-panel{transition:transform .3s cubic-bezier(.4,0,.2,1)}
+#right-panel.collapsed{transform:translateX(100%)}
+
+/* Icon buttons */
+.btn-icon{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;cursor:pointer;transition:background .15s;color:rgba(232,232,240,.65);border:none;background:none}
+.btn-icon:hover{background:rgba(255,255,255,.08);color:#e8e8f0}
+.btn-icon.active{background:rgba(99,102,241,.2);color:#6366f1}
+
+/* View preset buttons */
+.view-btn{padding:4px 10px;border-radius:4px;font-size:11px;font-family:'JetBrains Mono',monospace;cursor:pointer;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(232,232,240,.6);transition:all .15s}
+.view-btn:hover{background:rgba(99,102,241,.2);border-color:rgba(99,102,241,.4);color:#e8e8f0}
+.view-btn.active{background:rgba(99,102,241,.3);border-color:#6366f1;color:#6366f1}
+
+/* FPS */
+#fps-counter{position:fixed;top:56px;right:8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#22c55e;background:rgba(0,0,0,.7);padding:2px 6px;border-radius:3px;z-index:500;display:none}
+#fps-counter.visible{display:block}
+
+/* Prop rows */
+.prop-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px}
+.prop-label{color:rgba(232,232,240,.45)}
+.prop-value{font-family:'JetBrains Mono',monospace;color:#e8e8f0}
+
+/* Nav tabs */
+.tab-item{position:relative;padding:6px 12px;cursor:pointer;font-size:12px;color:rgba(232,232,240,.5);transition:color .15s;border-radius:4px;white-space:nowrap}
+.tab-item:hover{color:rgba(232,232,240,.8);background:rgba(255,255,255,.04)}
+.tab-item.active{color:#6366f1}
+.tab-item.active::after{content:'';position:absolute;bottom:-1px;left:12px;right:12px;height:2px;background:#6366f1;border-radius:1px}
+
+/* Sidebar nav items */
+.model-item{padding:8px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:rgba(232,232,240,.6);display:flex;align-items:center;gap:8px;transition:all .15s;border:1px solid transparent}
+.model-item:hover{background:rgba(255,255,255,.04);color:rgba(232,232,240,.85)}
+.model-item.active{background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.3);color:#818cf8}
+.model-item .dot{width:6px;height:6px;border-radius:50%;background:rgba(232,232,240,.2);flex-shrink:0;transition:all .15s}
+.model-item.active .dot{background:#6366f1;box-shadow:0 0 8px #6366f1}
+
+/* Status dot */
+.status-dot{width:6px;height:6px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e;animation:statusPulse 2s ease-in-out infinite;flex-shrink:0}
+@keyframes statusPulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* Tooltip */
+.tip{position:relative}
+.tip::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:rgba(10,10,18,.95);border:1px solid rgba(255,255,255,.1);color:#e8e8f0;padding:3px 8px;border-radius:4px;font-size:11px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s;z-index:999}
+.tip:hover::after{opacity:1}
+
+/* Shortcuts overlay */
+#shortcuts-overlay{display:none;position:fixed;inset:0;z-index:900;background:rgba(5,5,8,.85);backdrop-filter:blur(8px);align-items:center;justify-content:center}
+
+/* Responsive */
+@media(max-width:767px){
+  #sidebar{width:220px!important;position:fixed;top:48px;left:0;z-index:100;height:calc(100% - 48px)}
+  #right-panel{width:220px!important;position:fixed;top:48px;right:0;z-index:100;height:calc(100% - 48px)}
+  .hide-mobile{display:none!important}
+}
+@media(min-width:768px) and (max-width:1279px){
+  #sidebar{width:200px}
+  #right-panel{width:230px}
+}
+@media(min-width:1280px){
+  #sidebar{width:240px}
+  #right-panel{width:260px}
+}
+</style>
+</head>
+<body class="dark">
+
+<!-- ═══════════════════════════════════ LOADING SCREEN ═════ -->
+<div id="loading-screen">
+  <div id="orb-wrap" style="position:relative;width:160px;height:160px;margin-bottom:32px">
+    <!-- nucleus -->
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#a5b4fc,#6366f1);box-shadow:0 0 24px rgba(99,102,241,.9),0 0 48px rgba(99,102,241,.4)"></div>
+    <!-- rings via canvas-style divs -->
+    <div id="orb-r1" style="position:absolute;top:50%;left:50%;width:90px;height:34px;margin:-17px 0 0 -45px;border-radius:50%;border:1px solid rgba(99,102,241,.55);transform-style:preserve-3d"></div>
+    <div id="orb-r2" style="position:absolute;top:50%;left:50%;width:120px;height:46px;margin:-23px 0 0 -60px;border-radius:50%;border:1px solid rgba(139,92,246,.45);transform-style:preserve-3d"></div>
+    <div id="orb-r3" style="position:absolute;top:50%;left:50%;width:150px;height:58px;margin:-29px 0 0 -75px;border-radius:50%;border:1px solid rgba(56,189,248,.35);transform-style:preserve-3d"></div>
+    <!-- electrons injected by JS -->
+  </div>
+  <div style="font-size:26px;font-weight:700;letter-spacing:3px;color:#e8e8f0">CHEMIDEX</div>
+  <div style="font-size:11px;color:rgba(232,232,240,.35);font-family:'JetBrains Mono',monospace;letter-spacing:3px;margin-top:4px;margin-bottom:24px">ATOMIC VISUALIZATION PLATFORM</div>
+  <div style="width:200px;height:2px;background:rgba(255,255,255,.06);border-radius:1px;overflow:hidden">
+    <div id="load-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:1px;transition:width .25s ease"></div>
+  </div>
+  <div id="load-status" style="font-size:10px;color:rgba(232,232,240,.28);font-family:'JetBrains Mono',monospace;margin-top:8px;letter-spacing:1.5px">INITIALIZING...</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ CANVAS ═════ -->
+<div id="canvas-container"><canvas id="three-canvas"></canvas></div>
+
+<!-- ══════════════════════════════════════ FPS COUNTER ═════ -->
+<div id="fps-counter">60 FPS</div>
+
+<!-- ════════════════════════════════════════ MAIN UI ═══════ -->
+<div id="main-ui" style="display:none;opacity:0;position:fixed;inset:0;z-index:10;pointer-events:none">
+
+  <!-- TOP NAV -->
+  <nav id="top-nav" class="glass" style="position:absolute;top:0;left:0;right:0;height:48px;display:flex;align-items:center;padding:0 16px;gap:10px;pointer-events:all;border-top:none;border-left:none;border-right:none">
+
+    <!-- Logo -->
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+      <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff">C</div>
+      <span style="font-size:15px;font-weight:700;letter-spacing:.5px">Chemidex</span>
+      <span style="font-size:9px;color:rgba(232,232,240,.3);font-family:'JetBrains Mono',monospace;padding:1px 5px;border:1px solid rgba(255,255,255,.08);border-radius:3px">v0.1</span>
+    </div>
+
+    <div style="width:1px;height:20px;background:rgba(255,255,255,.08)"></div>
+
+    <!-- Nav tabs -->
+    <div style="display:flex;align-items:center;gap:2px;overflow:hidden">
+      <div class="tab-item active" data-route="#/model/quantum">Models</div>
+      <div class="tab-item" data-route="#/elements">Elements</div>
+      <div class="tab-item hide-mobile" data-route="#/molecules">Molecules</div>
+      <div class="tab-item hide-mobile" data-route="#/spectra">Spectra</div>
+    </div>
+
+    <div style="flex:1"></div>
+
+    <!-- Status -->
+    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(232,232,240,.35);font-family:'JetBrains Mono',monospace;flex-shrink:0">
+      <div class="status-dot"></div>
+      <span id="status-text">Engine Ready</span>
+    </div>
+
+    <div style="width:1px;height:20px;background:rgba(255,255,255,.08)"></div>
+
+    <!-- Toolbar -->
+    <div style="display:flex;align-items:center;gap:2px">
+      <button class="btn-icon tip active" data-tip="Toggle Sidebar" id="btn-sidebar">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+      </button>
+      <button class="btn-icon tip active" data-tip="Toggle Properties" id="btn-right">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+      </button>
+      <button class="btn-icon tip" data-tip="Screenshot" id="btn-screenshot">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </button>
+      <button class="btn-icon tip" data-tip="Keyboard Shortcuts (?)" id="btn-help">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </button>
+    </div>
+  </nav>
+
+  <!-- LEFT SIDEBAR -->
+  <aside id="sidebar" class="glass" style="position:absolute;top:48px;left:0;bottom:52px;display:flex;flex-direction:column;pointer-events:all;border-top:none;border-left:none;border-bottom:none;overflow:hidden">
+
+    <div style="padding:12px 14px 10px;border-bottom:1px solid rgba(255,255,255,.06)">
+      <div style="font-size:10px;font-weight:600;letter-spacing:2px;color:rgba(232,232,240,.35);text-transform:uppercase">Navigation</div>
+    </div>
+
+    <!-- Model list -->
+    <div style="padding:12px 14px">
+      <div style="font-size:10px;color:rgba(232,232,240,.28);font-family:'JetBrains Mono',monospace;margin-bottom:8px;letter-spacing:1px">ATOMIC MODELS</div>
+      <div id="model-list" style="display:flex;flex-direction:column;gap:2px">
+        <div class="model-item active" data-model="quantum"><div class="dot"></div>Quantum Mechanical</div>
+        <div class="model-item" data-model="bohr"><div class="dot"></div>Bohr Model</div>
+        <div class="model-item" data-model="rutherford"><div class="dot"></div>Rutherford Model</div>
+        <div class="model-item" data-model="lewis"><div class="dot"></div>Lewis Structure</div>
+        <div class="model-item" data-model="vsepr"><div class="dot"></div>VSEPR</div>
+      </div>
+    </div>
+
+    <div style="height:1px;background:rgba(255,255,255,.06);margin:0 14px"></div>
+
+    <!-- Element quick grid -->
+    <div style="padding:12px 14px">
+      <div style="font-size:10px;color:rgba(232,232,240,.28);font-family:'JetBrains Mono',monospace;margin-bottom:8px;letter-spacing:1px">QUICK SELECT</div>
+      <div id="elem-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px"></div>
+    </div>
+
+    <div style="height:1px;background:rgba(255,255,255,.06);margin:0 14px"></div>
+
+    <!-- Search -->
+    <div style="padding:10px 14px">
+      <div style="position:relative">
+        <svg style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:rgba(232,232,240,.3);pointer-events:none" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input id="elem-search" type="text" placeholder="Search elements…"
+          style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:7px 8px 7px 28px;font-size:12px;color:#e8e8f0;outline:none;font-family:'Inter',sans-serif"
+          onfocus="this.style.borderColor='rgba(99,102,241,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.08)'">
+      </div>
+      <div id="search-results" style="margin-top:6px;display:flex;flex-direction:column;gap:2px"></div>
+    </div>
+
+    <div style="flex:1"></div>
+
+    <!-- Footer -->
+    <div style="padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)">
+      <div style="font-size:10px;color:rgba(232,232,240,.18);font-family:'JetBrains Mono',monospace;line-height:1.7">
+        <div>THREE.js r160</div><div>GSAP 3.12.5</div><div>Tailwind 3.4</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- RIGHT PROPERTIES PANEL -->
+  <aside id="right-panel" class="glass" style="position:absolute;top:48px;right:0;bottom:52px;display:flex;flex-direction:column;pointer-events:all;border-top:none;border-right:none;border-bottom:none;overflow:hidden">
+
+    <div style="padding:12px 14px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+      <div style="font-size:10px;font-weight:600;letter-spacing:2px;color:rgba(232,232,240,.35);text-transform:uppercase;margin-bottom:8px">Properties</div>
+      <div style="display:flex;gap:2px;margin-bottom:-1px">
+        <div class="tab-item active" data-panel="element" style="font-size:11px;padding:5px 10px">Element</div>
+        <div class="tab-item" data-panel="scene" style="font-size:11px;padding:5px 10px">Scene</div>
+      </div>
+    </div>
+
+    <!-- Element panel -->
+    <div id="panel-element" style="padding:14px;overflow-y:auto;flex:1">
+      <div id="elem-hero" style="background:rgba(99,102,241,.09);border:1px solid rgba(99,102,241,.22);border-radius:8px;padding:16px;margin-bottom:14px;text-align:center">
+        <div id="hero-sym" style="font-size:52px;font-weight:700;color:#818cf8;font-family:'JetBrains Mono',monospace;line-height:1">H</div>
+        <div id="hero-name" style="font-size:14px;color:#e8e8f0;margin-top:2px">Hydrogen</div>
+        <div id="hero-z" style="font-size:11px;color:rgba(232,232,240,.38);font-family:'JetBrains Mono',monospace;margin-top:2px">Z = 1</div>
+      </div>
+
+      <div style="font-size:10px;color:rgba(232,232,240,.28);font-family:'JetBrains Mono',monospace;margin-bottom:8px;letter-spacing:1px">ATOMIC DATA</div>
+      <div id="prop-table">
+        <div class="prop-row"><span class="prop-label">Atomic Number</span><span class="prop-value" id="p-z">1</span></div>
+        <div class="prop-row"><span class="prop-label">Atomic Mass</span><span class="prop-value" id="p-mass">1.008 u</span></div>
+        <div class="prop-row"><span class="prop-label">Period</span><span class="prop-value" id="p-period">1</span></div>
+        <div class="prop-row"><span class="prop-label">Group</span><span class="prop-value" id="p-group">1</span></div>
+        <div class="prop-row"><span class="prop-label">Block</span><span class="prop-value" id="p-block">s</span></div>
+        <div class="prop-row"><span class="prop-label">Configuration</span><span class="prop-value" id="p-config" style="font-size:11px">1s¹</span></div>
+        <div class="prop-row"><span class="prop-label">Electronegativity</span><span class="prop-value" id="p-en">2.20</span></div>
+        <div class="prop-row"><span class="prop-label">Atomic Radius</span><span class="prop-value" id="p-r">53 pm</span></div>
+        <div class="prop-row"><span class="prop-label">1st Ionization E.</span><span class="prop-value" id="p-ie">13.598 eV</span></div>
+        <div class="prop-row"><span class="prop-label">State (STP)</span><span class="prop-value" id="p-state" style="color:#60a5fa">Gas</span></div>
+      </div>
+
+      <div style="height:1px;background:rgba(255,255,255,.06);margin:14px 0"></div>
+
+      <div style="font-size:10px;color:rgba(232,232,240,.28);font-family:'JetBrains Mono',monospace;margin-bottom:8px;letter-spacing:1px">QUANTUM NUMBERS</div>
+      <div>
+        <div class="prop-row"><span class="prop-label">n (Principal)</span><span class="prop-value" id="q-n">1</span></div>
+        <div class="prop-row"><span class="prop-label">l (Angular)</span><span class="prop-value" id="q-l">0</span></div>
+        <div class="prop-row"><span class="prop-label">mₗ (Magnetic)</span><span class="prop-value" id="q-ml">0</span></div>
+        <div class="prop-row"><span class="prop-label">mₛ (Spin)</span><span class="prop-value" id="q-ms">+½</span></div>
+      </div>
+    </div>
+
+    <!-- Scene panel -->
+    <div id="panel-scene" style="padding:14px;overflow-y:auto;flex:1;display:none">
+      <div style="font-size:10px;color:rgba(232,232,240,.28);font-family:'JetBrains Mono',monospace;margin-bottom:12px;letter-spacing:1px">RENDER</div>
+
+      <label style="font-size:12px;color:rgba(232,232,240,.55);display:block;margin-bottom:6px">Bloom Intensity</label>
+      <input type="range" id="r-bloom" min="0" max="3" step="0.05" value="1.5" style="width:100%;accent-color:#6366f1">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(232,232,240,.3);font-family:'JetBrains Mono',monospace;margin-bottom:14px"><span>0</span><span id="v-bloom">1.50</span><span>3</span></div>
+
+      <label style="font-size:12px;color:rgba(232,232,240,.55);display:block;margin-bottom:6px">Exposure</label>
+      <input type="range" id="r-exposure" min="0.1" max="3" step="0.05" value="1" style="width:100%;accent-color:#6366f1">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(232,232,240,.3);font-family:'JetBrains Mono',monospace;margin-bottom:14px"><span>0.1</span><span id="v-exposure">1.00</span><span>3</span></div>
+
+      <label style="font-size:12px;color:rgba(232,232,240,.55);display:block;margin-bottom:6px">Bloom Threshold</label>
+      <input type="range" id="r-threshold" min="0" max="1" step="0.01" value="0.15" style="width:100%;accent-color:#6366f1">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(232,232,240,.3);font-family:'JetBrains Mono',monospace;margin-bottom:14px"><span>0</span><span id="v-threshold">0.15</span><span>1</span></div>
+
+      <div style="height:1px;background:rgba(255,255,255,.06);margin:4px 0 14px"></div>
+
+      <div style="font-size:10px;color:rgba(232,232,240,.28);font-family:'JetBrains Mono',monospace;margin-bottom:10px;letter-spacing:1px">CAMERA</div>
+      <div>
+        <div class="prop-row"><span class="prop-label">FOV</span><span class="prop-value" id="c-fov">60°</span></div>
+        <div class="prop-row"><span class="prop-label">Distance</span><span class="prop-value" id="c-dist">7.07</span></div>
+        <div class="prop-row"><span class="prop-label">X</span><span class="prop-value" id="c-x">4.00</span></div>
+        <div class="prop-row"><span class="prop-label">Y</span><span class="prop-value" id="c-y">3.00</span></div>
+        <div class="prop-row"><span class="prop-label">Z</span><span class="prop-value" id="c-z">5.00</span></div>
+      </div>
+
+      <div style="height:1px;background:rgba(255,255,255,.06);margin:14px 0"></div>
+
+      <div style="font-size:10px;color:rgba(232,232,240,.28);font-family:'JetBrains Mono',monospace;margin-bottom:10px;letter-spacing:1px">TOGGLES</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <label style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:rgba(232,232,240,.6);cursor:pointer">Particle System<input type="checkbox" id="t-particles" checked style="accent-color:#6366f1;width:14px;height:14px"></label>
+        <label style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:rgba(232,232,240,.6);cursor:pointer">Post Processing<input type="checkbox" id="t-postfx" checked style="accent-color:#6366f1;width:14px;height:14px"></label>
+        <label style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:rgba(232,232,240,.6);cursor:pointer">Wireframe Mode<input type="checkbox" id="t-wireframe" style="accent-color:#6366f1;width:14px;height:14px"></label>
+        <label style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:rgba(232,232,240,.6);cursor:pointer">Grid Helper<input type="checkbox" id="t-grid" style="accent-color:#6366f1;width:14px;height:14px"></label>
+        <label style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:rgba(232,232,240,.6);cursor:pointer">Fog<input type="checkbox" id="t-fog" checked style="accent-color:#6366f1;width:14px;height:14px"></label>
+      </div>
+    </div>
+  </aside>
+
+  <!-- BOTTOM CONTROLS -->
+  <div id="bottom-bar" class="glass" style="position:absolute;bottom:0;left:0;right:0;height:52px;display:flex;align-items:center;padding:0 14px;gap:10px;pointer-events:all;border-bottom:none;border-left:none;border-right:none;border-top:1px solid rgba(255,255,255,.08)">
+
+    <!-- View presets -->
+    <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+      <span style="font-size:10px;color:rgba(232,232,240,.28);font-family:'JetBrains Mono',monospace;margin-right:2px">VIEW</span>
+      <button class="view-btn active" data-view="iso">ISO</button>
+      <button class="view-btn" data-view="front">FRONT</button>
+      <button class="view-btn" data-view="top">TOP</button>
+      <button class="view-btn" data-view="side">SIDE</button>
+    </div>
+
+    <div style="width:1px;height:20px;background:rgba(255,255,255,.08)"></div>
+
+    <!-- Auto rotate -->
+    <button id="btn-autorotate" class="btn-icon tip active" data-tip="Toggle Auto-Rotate (Space)" style="width:auto;padding:0 8px;gap:5px;font-size:11px;font-family:'JetBrains Mono',monospace;border-radius:6px;border:1px solid rgba(255,255,255,.1)">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+      AUTO
+    </button>
+
+    <!-- Reset -->
+    <button id="btn-reset" class="btn-icon tip" data-tip="Reset Camera (R)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+    </button>
+
+    <div style="width:1px;height:20px;background:rgba(255,255,255,.08)"></div>
+
+    <!-- Zoom display -->
+    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(232,232,240,.38);display:flex;align-items:center;gap:5px;flex-shrink:0">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <span id="zoom-val">7.07</span>
+    </div>
+
+    <div style="flex:1"></div>
+
+    <!-- Anim speed -->
+    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:rgba(232,232,240,.35)"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <input type="range" id="r-speed" min="0.1" max="3" step="0.1" value="1" style="width:56px;accent-color:#6366f1">
+      <span id="v-speed" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(232,232,240,.5);min-width:28px">1.0×</span>
+    </div>
+
+    <div style="width:1px;height:20px;background:rgba(255,255,255,.08)"></div>
+
+    <!-- Spherical coords -->
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(232,232,240,.3);flex-shrink:0" class="hide-mobile">
+      θ <span id="coord-theta" style="color:rgba(232,232,240,.5)">45.0°</span>&nbsp;&nbsp;
+      φ <span id="coord-phi" style="color:rgba(232,232,240,.5)">54.7°</span>
+    </div>
+  </div>
+
+</div><!-- /main-ui -->
+
+<!-- SHORTCUTS OVERLAY -->
+<div id="shortcuts-overlay">
+  <div class="glass" style="width:420px;max-width:90vw;border-radius:12px;padding:24px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div style="font-size:16px;font-weight:600">Keyboard Shortcuts</div>
+      <button id="close-shortcuts" class="btn-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 20px;font-size:12px;align-items:center">
+      <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">Left drag</code><span>Orbit / rotate</span>
+      <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">Right drag</code><span>Pan</span>
+      <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">Scroll</code><span>Zoom in / out</span>
+      <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">Space</code><span>Toggle auto-rotate</span>
+      <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">R</code><span>Reset camera to current preset</span>
+      <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">1</code><span>Front view</span>
+      <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">2</code><span>Top view</span>
+      <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">3</code><span>Side view</span>
+      <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">4</code><span>Isometric view</span>
+      <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">` (backtick)</code><span>Toggle FPS / dev-mode</span>
+      <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">?</code><span>This help panel</span>
+      <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">Esc</code><span>Close overlays</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ IMPORT MAP + THREE.JS MODULE ══════ -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls }    from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer }   from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass }       from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass }  from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { SMAAPass }         from 'three/addons/postprocessing/SMAAPass.js';
+import { OutputPass }       from 'three/addons/postprocessing/OutputPass.js';
+
+// ──────────────────────────────────────────────────────────────
+// ELEMENTS DATA  (first 36)
+// ──────────────────────────────────────────────────────────────
+const ELEMENTS = [
+  {z:1,  sym:'H',  name:'Hydrogen',   mass:1.008,  p:1, g:1,  b:'s', cfg:'1s¹',           en:2.20, r:53,  ie:13.598, st:'Gas',   col:'#e2e8f0'},
+  {z:2,  sym:'He', name:'Helium',     mass:4.003,  p:1, g:18, b:'s', cfg:'1s²',           en:null, r:31,  ie:24.587, st:'Gas',   col:'#bfdbfe'},
+  {z:3,  sym:'Li', name:'Lithium',    mass:6.941,  p:2, g:1,  b:'s', cfg:'[He] 2s¹',     en:0.98, r:167, ie:5.392,  st:'Solid', col:'#fca5a5'},
+  {z:4,  sym:'Be', name:'Beryllium',  mass:9.012,  p:2, g:2,  b:'s', cfg:'[He] 2s²',     en:1.57, r:112, ie:9.323,  st:'Solid', col:'#86efac'},
+  {z:5,  sym:'B',  name:'Boron',      mass:10.811, p:2, g:13, b:'p', cfg:'[He] 2s²2p¹',  en:2.04, r:87,  ie:8.298,  st:'Solid', col:'#fdba74'},
+  {z:6,  sym:'C',  name:'Carbon',     mass:12.011, p:2, g:14, b:'p', cfg:'[He] 2s²2p²',  en:2.55, r:67,  ie:11.260, st:'Solid', col:'#d1d5db'},
+  {z:7,  sym:'N',  name:'Nitrogen',   mass:14.007, p:2, g:15, b:'p', cfg:'[He] 2s²2p³',  en:3.04, r:56,  ie:14.534, st:'Gas',   col:'#93c5fd'},
+  {z:8,  sym:'O',  name:'Oxygen',     mass:15.999, p:2, g:16, b:'p', cfg:'[He] 2s²2p⁴',  en:3.44, r:48,  ie:13.618, st:'Gas',   col:'#fca5a5'},
+  {z:9,  sym:'F',  name:'Fluorine',   mass:18.998, p:2, g:17, b:'p', cfg:'[He] 2s²2p⁵',  en:3.98, r:42,  ie:17.423, st:'Gas',   col:'#6ee7b7'},
+  {z:10, sym:'Ne', name:'Neon',       mass:20.180, p:2, g:18, b:'p', cfg:'[He] 2s²2p⁶',  en:null, r:38,  ie:21.565, st:'Gas',   col:'#c4b5fd'},
+  {z:11, sym:'Na', name:'Sodium',     mass:22.990, p:3, g:1,  b:'s', cfg:'[Ne] 3s¹',     en:0.93, r:190, ie:5.139,  st:'Solid', col:'#fed7aa'},
+  {z:12, sym:'Mg', name:'Magnesium',  mass:24.305, p:3, g:2,  b:'s', cfg:'[Ne] 3s²',     en:1.31, r:160, ie:7.646,  st:'Solid', col:'#bbf7d0'},
+  {z:13, sym:'Al', name:'Aluminum',   mass:26.982, p:3, g:13, b:'p', cfg:'[Ne] 3s²3p¹',  en:1.61, r:143, ie:5.986,  st:'Solid', col:'#e5e7eb'},
+  {z:14, sym:'Si', name:'Silicon',    mass:28.086, p:3, g:14, b:'p', cfg:'[Ne] 3s²3p²',  en:1.90, r:117, ie:8.152,  st:'Solid', col:'#d4a574'},
+  {z:15, sym:'P',  name:'Phosphorus', mass:30.974, p:3, g:15, b:'p', cfg:'[Ne] 3s²3p³',  en:2.19, r:98,  ie:10.487, st:'Solid', col:'#fb923c'},
+  {z:16, sym:'S',  name:'Sulfur',     mass:32.065, p:3, g:16, b:'p', cfg:'[Ne] 3s²3p⁴',  en:2.58, r:88,  ie:10.360, st:'Solid', col:'#fde047'},
+  {z:17, sym:'Cl', name:'Chlorine',   mass:35.453, p:3, g:17, b:'p', cfg:'[Ne] 3s²3p⁵',  en:3.16, r:79,  ie:12.968, st:'Gas',   col:'#86efac'},
+  {z:18, sym:'Ar', name:'Argon',      mass:39.948, p:3, g:18, b:'p', cfg:'[Ne] 3s²3p⁶',  en:null, r:71,  ie:15.760, st:'Gas',   col:'#a5b4fc'},
+];
+
+// ──────────────────────────────────────────────────────────────
+// STATE MANAGER — pub/sub + localStorage
+// ──────────────────────────────────────────────────────────────
+class StateManager {
+  constructor() {
+    this._state = {
+      model: 'quantum', element: 1, route: '#/model/quantum',
+      autoRotate: true, animSpeed: 1.0, activeView: 'iso',
+      bloomIntensity: 1.5, bloomThreshold: 0.15, exposure: 1.0,
+      showParticles: true, showPostFX: true, wireframe: false,
+      showGrid: false, showFog: true, devMode: false,
+      sidebarOpen: true, rightPanelOpen: true,
+    };
+    this._subs = {};
+    this._load();
+  }
+  get(k) { return this._state[k]; }
+  set(k, v) {
+    if (this._state[k] === v) return;
+    const old = this._state[k];
+    this._state[k] = v;
+    (this._subs[k] || []).forEach(fn => fn(v, old));
+    (this._subs['*'] || []).forEach(fn => fn(k, v, old));
+    this._save();
+  }
+  sub(k, fn) {
+    (this._subs[k] = this._subs[k] || []).push(fn);
+    return () => { this._subs[k] = this._subs[k].filter(f => f !== fn); };
+  }
+  _save() {
+    try {
+      const KEYS = ['model','element','autoRotate','animSpeed','activeView',
+                    'bloomIntensity','bloomThreshold','exposure','showParticles',
+                    'sidebarOpen','rightPanelOpen','showFog'];
+      const obj = {};
+      KEYS.forEach(k => { obj[k] = this._state[k]; });
+      localStorage.setItem('chemidex_v1', JSON.stringify(obj));
+    } catch(e) {}
+  }
+  _load() {
+    try {
+      const raw = localStorage.getItem('chemidex_v1');
+      if (raw) Object.assign(this._state, JSON.parse(raw));
+    } catch(e) {}
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// ROUTER
+// ──────────────────────────────────────────────────────────────
+class Router {
+  constructor(state) {
+    this._s = state;
+    this._h = {};
+    window.addEventListener('hashchange', () => this._dispatch());
+  }
+  on(pattern, fn) { this._h[pattern] = fn; return this; }
+  navigate(hash) { history.pushState(null, '', hash); this._s.set('route', hash); this._dispatch(); }
+  _dispatch() {
+    const h = location.hash || '#/model/quantum';
+    this._s.set('route', h);
+    const m = h.match(/^#\/model\/(\w+)/);
+    const e = h.match(/^#\/element\/(\d+)/);
+    if (m && this._h.model) this._h.model(m[1]);
+    else if (e && this._h.element) this._h.element(+e[1]);
+  }
+  init() { this._dispatch(); return this; }
+}
+
+// ──────────────────────────────────────────────────────────────
+// THREE.JS — core references
+// ──────────────────────────────────────────────────────────────
+let camera, scene, renderer, composer, controls, clock;
+let bloomPass, smaaPass;
+let particles, pVel;
+let gridHelper, fogRef;
+let animSpeed = 1.0;
+
+const state  = new StateManager();
+const router = new Router(state);
+
+// ──────────────────────────────────────────────────────────────
+// SCENE INIT
+// ──────────────────────────────────────────────────────────────
+function initScene() {
+  clock = new THREE.Clock();
+
+  // Renderer
+  renderer = new THREE.WebGLRenderer({
+    canvas: document.getElementById('three-canvas'),
+    antialias: false,
+    powerPreference: 'high-performance',
+    alpha: false,
+  });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.toneMapping     = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = state.get('exposure');
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.shadowMap.enabled = false; // no shadows on empty scene
+
+  // Scene
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x050508);
+  fogRef = new THREE.FogExp2(0x050508, 0.032);
+  scene.fog = state.get('showFog') ? fogRef : null;
+
+  // Camera
+  camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 1000);
+  camera.position.set(4, 3, 5);
+
+  // Environment
+  initEnv();
+  initLights();
+  initPostFX();
+  initControls();
+  initParticles();
+
+  // Grid
+  gridHelper = new THREE.GridHelper(24, 24, 0x151530, 0x0e0e22);
+  gridHelper.visible = false;
+  scene.add(gridHelper);
+
+  window.addEventListener('resize', onResize);
+}
+
+// ──────────────────────────────────────────────────────────────
+// ENVIRONMENT (procedural PMREMGenerator — no external HDR)
+// ──────────────────────────────────────────────────────────────
+function initEnv() {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  pmrem.compileEquirectangularShader();
+
+  // tiny gradient env scene
+  const envScene = new THREE.Scene();
+  const geo = new THREE.SphereGeometry(50, 8, 8);
+  const mat = new THREE.MeshBasicMaterial({ side: THREE.BackSide, color: 0x050508 });
+  envScene.add(new THREE.Mesh(geo, mat));
+
+  scene.environment = pmrem.fromScene(envScene).texture;
+  pmrem.dispose();
+}
+
+// ──────────────────────────────────────────────────────────────
+// LIGHTS
+// ──────────────────────────────────────────────────────────────
+function initLights() {
+  scene.add(new THREE.AmbientLight(0x111122, 0.6));
+  scene.add(new THREE.HemisphereLight(0x2233ee, 0x050508, 0.25));
+
+  const pl1 = new THREE.PointLight(0x6366f1, 3, 25);
+  pl1.position.set(5, 5, 5);
+  scene.add(pl1);
+
+  const pl2 = new THREE.PointLight(0x8b5cf6, 2, 18);
+  pl2.position.set(-5, -3, -6);
+  scene.add(pl2);
+
+  const pl3 = new THREE.PointLight(0x38bdf8, 1.5, 14);
+  pl3.position.set(0, 8, -4);
+  scene.add(pl3);
+}
+
+// ──────────────────────────────────────────────────────────────
+// POST PROCESSING
+// ──────────────────────────────────────────────────────────────
+function initPostFX() {
+  composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+
+  bloomPass = new UnrealBloomPass(
+    new THREE.Vector2(innerWidth, innerHeight),
+    state.get('bloomIntensity'),
+    0.4,
+    state.get('bloomThreshold')
+  );
+  composer.addPass(bloomPass);
+
+  smaaPass = new SMAAPass(innerWidth, innerHeight);
+  composer.addPass(smaaPass);
+
+  composer.addPass(new OutputPass());
+}
+
+// ──────────────────────────────────────────────────────────────
+// ORBIT CONTROLS
+// ──────────────────────────────────────────────────────────────
+function initControls() {
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping  = true;
+  controls.dampingFactor  = 0.05;
+  controls.autoRotate     = state.get('autoRotate');
+  controls.autoRotateSpeed = 0.5;
+  controls.minDistance    = 1;
+  controls.maxDistance    = 60;
+  controls.enablePan      = true;
+  controls.panSpeed       = 0.5;
+  controls.rotateSpeed    = 0.75;
+  controls.zoomSpeed      = 1.2;
+  controls.target.set(0, 0, 0);
+  controls.update();
+}
+
+// ──────────────────────────────────────────────────────────────
+// BACKGROUND PARTICLES — 500 drifting electrons/photons
+// ──────────────────────────────────────────────────────────────
+function initParticles() {
+  const N   = 500;
+  const pos = new Float32Array(N * 3);
+  const col = new Float32Array(N * 3);
+  const sz  = new Float32Array(N);
+  pVel      = new Float32Array(N * 3);
+
+  const palette = [
+    new THREE.Color(0x6366f1), new THREE.Color(0x8b5cf6),
+    new THREE.Color(0x38bdf8), new THREE.Color(0xe2e8f0),
+    new THREE.Color(0xfbbf24), new THREE.Color(0xf472b6),
+  ];
+
+  for (let i = 0; i < N; i++) {
+    const phi   = Math.acos(2 * Math.random() - 1);
+    const theta = Math.random() * Math.PI * 2;
+    const r     = 8 + Math.random() * 14;
+    pos[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+    pos[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+    pos[i*3+2] = r * Math.cos(phi);
+
+    pVel[i*3]   = (Math.random() - 0.5) * 0.0025;
+    pVel[i*3+1] = (Math.random() - 0.5) * 0.0025;
+    pVel[i*3+2] = (Math.random() - 0.5) * 0.0025;
+
+    const c = palette[Math.floor(Math.random() * palette.length)];
+    col[i*3] = c.r; col[i*3+1] = c.g; col[i*3+2] = c.b;
+    sz[i] = Math.random() * 3 + 1;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color',    new THREE.BufferAttribute(col, 3));
+  geo.setAttribute('size',     new THREE.BufferAttribute(sz,  1));
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uPR: { value: renderer.getPixelRatio() } },
+    vertexShader: `
+      attribute float size;
+      attribute vec3 color;
+      varying vec3 vCol;
+      varying float vAlpha;
+      uniform float uPR;
+      void main(){
+        vCol = color;
+        vec4 mv = modelViewMatrix * vec4(position,1.0);
+        float d = length(mv.xyz);
+        vAlpha = clamp(1.0 - d/26.0, 0.0, 1.0) * 0.65;
+        gl_PointSize = size * uPR * (220.0 / -mv.z);
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      varying vec3 vCol;
+      varying float vAlpha;
+      void main(){
+        float d = length(gl_PointCoord - 0.5);
+        if(d > 0.5) discard;
+        float a = (1.0 - d * 2.0) * vAlpha;
+        gl_FragColor = vec4(vCol, a);
+      }`,
+    transparent: true,
+    depthWrite:  false,
+    blending:    THREE.AdditiveBlending,
+    vertexColors: true,
+  });
+
+  particles = new THREE.Points(geo, mat);
+  particles.visible = state.get('showParticles');
+  scene.add(particles);
+}
+
+// ──────────────────────────────────────────────────────────────
+// VIEW PRESETS
+// ──────────────────────────────────────────────────────────────
+const VIEWS = {
+  iso:   { p: [4.0, 3.0,  5.0] },
+  front: { p: [0.0, 0.0,  7.0] },
+  top:   { p: [0.0, 8.0,  0.001] },
+  side:  { p: [7.0, 0.0,  0.0] },
+};
+
+function snapView(name) {
+  const v = VIEWS[name]; if (!v) return;
+  state.set('activeView', name);
+  document.querySelectorAll('.view-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.view === name));
+
+  gsap.to(camera.position, {
+    x: v.p[0], y: v.p[1], z: v.p[2],
+    duration: 0.85, ease: 'power3.inOut',
+    onUpdate: () => controls.update(),
+  });
+  gsap.to(controls.target, {
+    x: 0, y: 0, z: 0,
+    duration: 0.85, ease: 'power3.inOut',
+    onUpdate: () => controls.update(),
+  });
+}
+
+// ──────────────────────────────────────────────────────────────
+// RENDER LOOP
+// ──────────────────────────────────────────────────────────────
+let fc = 0, fpsT = 0;
+const fpsEl = document.getElementById('fps-counter');
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  const scaled = dt * animSpeed;
+
+  controls.autoRotateSpeed = 0.5 * animSpeed;
+  controls.update();
+
+  // drift particles
+  if (particles && particles.visible) {
+    const pa = particles.geometry.attributes.position.array;
+    const N  = pa.length / 3;
+    for (let i = 0; i < N; i++) {
+      pa[i*3]   += pVel[i*3]   * animSpeed;
+      pa[i*3+1] += pVel[i*3+1] * animSpeed;
+      pa[i*3+2] += pVel[i*3+2] * animSpeed;
+      const r = Math.hypot(pa[i*3], pa[i*3+1], pa[i*3+2]);
+      if (r > 22) {
+        pa[i*3] *= 0.975; pa[i*3+1] *= 0.975; pa[i*3+2] *= 0.975;
+        pVel[i*3] *= -0.6; pVel[i*3+1] *= -0.6; pVel[i*3+2] *= -0.6;
+      }
+    }
+    particles.geometry.attributes.position.needsUpdate = true;
+  }
+
+  // camera HUD
+  const cp = camera.position;
+  const dist = cp.distanceTo(controls.target);
+  document.getElementById('c-x').textContent    = cp.x.toFixed(2);
+  document.getElementById('c-y').textContent    = cp.y.toFixed(2);
+  document.getElementById('c-z').textContent    = cp.z.toFixed(2);
+  document.getElementById('c-dist').textContent = dist.toFixed(2);
+  document.getElementById('zoom-val').textContent = dist.toFixed(2);
+
+  const sp = new THREE.Spherical().setFromCartesianCoords(
+    cp.x - controls.target.x, cp.y - controls.target.y, cp.z - controls.target.z
+  );
+  document.getElementById('coord-theta').textContent = (sp.theta * 180/Math.PI).toFixed(1) + '°';
+  document.getElementById('coord-phi').textContent   = (sp.phi   * 180/Math.PI).toFixed(1) + '°';
+
+  // FPS
+  fc++; fpsT += dt;
+  if (fpsT >= 0.5) {
+    const fps = Math.round(fc / fpsT);
+    if (state.get('devMode')) {
+      fpsEl.textContent = fps + ' FPS';
+      fpsEl.style.color = fps >= 50 ? '#22c55e' : fps >= 30 ? '#f59e0b' : '#ef4444';
+    }
+    fc = 0; fpsT = 0;
+  }
+
+  state.get('showPostFX') ? composer.render() : renderer.render(scene, camera);
+}
+
+// ──────────────────────────────────────────────────────────────
+// RESIZE
+// ──────────────────────────────────────────────────────────────
+function onResize() {
+  const w = innerWidth, h = innerHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+  composer.setSize(w, h);
+  if (smaaPass.setSize) smaaPass.setSize(w, h);
+  bloomPass.resolution.set(w, h);
+}
+
+// ──────────────────────────────────────────────────────────────
+// ELEMENT PANEL
+// ──────────────────────────────────────────────────────────────
+function showElement(el) {
+  state.set('element', el.z);
+  document.getElementById('hero-sym').textContent  = el.sym;
+  document.getElementById('hero-name').textContent = el.name;
+  document.getElementById('hero-z').textContent    = `Z = ${el.z}`;
+  document.getElementById('hero-sym').style.color  = el.col;
+  document.getElementById('elem-hero').style.borderColor = el.col + '44';
+  document.getElementById('p-z').textContent      = el.z;
+  document.getElementById('p-mass').textContent   = el.mass + ' u';
+  document.getElementById('p-period').textContent = el.p;
+  document.getElementById('p-group').textContent  = el.g;
+  document.getElementById('p-block').textContent  = el.b;
+  document.getElementById('p-config').textContent = el.cfg;
+  document.getElementById('p-en').textContent     = el.en ?? '—';
+  document.getElementById('p-r').textContent      = el.r + ' pm';
+  document.getElementById('p-ie').textContent     = el.ie + ' eV';
+  document.getElementById('p-state').textContent  = el.st;
+  document.getElementById('p-state').style.color  =
+    el.st === 'Gas' ? '#60a5fa' : el.st === 'Liquid' ? '#34d399' : '#f9a8d4';
+  document.getElementById('q-n').textContent  = el.p;
+  document.getElementById('q-l').textContent  = el.b === 's' ? 0 : el.b === 'p' ? 1 : el.b === 'd' ? 2 : 3;
+  document.getElementById('status-text').textContent = `${el.name} (Z=${el.z})`;
+}
+
+// ──────────────────────────────────────────────────────────────
+// ELEMENT GRID  (first 12)
+// ──────────────────────────────────────────────────────────────
+function buildGrid() {
+  const wrap = document.getElementById('elem-grid');
+  wrap.innerHTML = '';
+  ELEMENTS.slice(0, 12).forEach(el => {
+    const d = document.createElement('div');
+    d.style.cssText = 'padding:5px 2px;border-radius:5px;text-align:center;cursor:pointer;font-size:11px;font-family:"JetBrains Mono",monospace;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.03);color:rgba(232,232,240,.7);transition:all .15s';
+    d.textContent = el.sym;
+    d.title = el.name;
+    d.addEventListener('click', () => {
+      showElement(el);
+      router.navigate(`#/element/${el.z}`);
+    });
+    d.addEventListener('mouseenter', () => {
+      d.style.background    = el.col + '28';
+      d.style.borderColor   = el.col + '88';
+      d.style.color         = el.col;
+    });
+    d.addEventListener('mouseleave', () => {
+      d.style.background    = 'rgba(255,255,255,.03)';
+      d.style.borderColor   = 'rgba(255,255,255,.06)';
+      d.style.color         = 'rgba(232,232,240,.7)';
+    });
+    wrap.appendChild(d);
+  });
+}
+
+// ──────────────────────────────────────────────────────────────
+// SEARCH
+// ──────────────────────────────────────────────────────────────
+document.getElementById('elem-search').addEventListener('input', function() {
+  const q = this.value.toLowerCase().trim();
+  const out = document.getElementById('search-results');
+  out.innerHTML = '';
+  if (!q) return;
+  ELEMENTS.filter(e => e.name.toLowerCase().includes(q) || e.sym.toLowerCase().includes(q))
+    .slice(0, 6).forEach(el => {
+      const d = document.createElement('div');
+      d.style.cssText = 'padding:6px 8px;border-radius:5px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:8px;transition:background .15s';
+      d.innerHTML = `<span style="font-family:'JetBrains Mono',monospace;color:${el.col};font-size:11px;min-width:20px">${el.sym}</span><span style="color:rgba(232,232,240,.7)">${el.name}</span><span style="margin-left:auto;font-size:10px;color:rgba(232,232,240,.3);font-family:'JetBrains Mono',monospace">${el.z}</span>`;
+      d.addEventListener('click', () => {
+        showElement(el);
+        router.navigate(`#/element/${el.z}`);
+        this.value = '';
+        out.innerHTML = '';
+      });
+      d.addEventListener('mouseenter', () => d.style.background = 'rgba(255,255,255,.05)');
+      d.addEventListener('mouseleave', () => d.style.background = '');
+      out.appendChild(d);
+    });
+});
+
+// ──────────────────────────────────────────────────────────────
+// UI WIRING
+// ──────────────────────────────────────────────────────────────
+function initUI() {
+  // sidebar toggle
+  document.getElementById('btn-sidebar').addEventListener('click', () => {
+    const open = !state.get('sidebarOpen');
+    state.set('sidebarOpen', open);
+    document.getElementById('sidebar').classList.toggle('collapsed', !open);
+    document.getElementById('btn-sidebar').classList.toggle('active', open);
+  });
+
+  // right panel toggle
+  document.getElementById('btn-right').addEventListener('click', () => {
+    const open = !state.get('rightPanelOpen');
+    state.set('rightPanelOpen', open);
+    document.getElementById('right-panel').classList.toggle('collapsed', !open);
+    document.getElementById('btn-right').classList.toggle('active', open);
+  });
+
+  // view buttons
+  document.querySelectorAll('.view-btn').forEach(b =>
+    b.addEventListener('click', () => snapView(b.dataset.view)));
+
+  // auto rotate
+  document.getElementById('btn-autorotate').addEventListener('click', () => {
+    const ar = !state.get('autoRotate');
+    state.set('autoRotate', ar);
+    controls.autoRotate = ar;
+    document.getElementById('btn-autorotate').classList.toggle('active', ar);
+  });
+
+  // reset
+  document.getElementById('btn-reset').addEventListener('click', () =>
+    snapView(state.get('activeView')));
+
+  // nav tabs
+  document.querySelectorAll('.tab-item[data-route]').forEach(t =>
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab-item[data-route]').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      router.navigate(t.dataset.route);
+    }));
+
+  // property panel tabs
+  document.querySelectorAll('.tab-item[data-panel]').forEach(t =>
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab-item[data-panel]').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById('panel-element').style.display = t.dataset.panel === 'element' ? '' : 'none';
+      document.getElementById('panel-scene').style.display   = t.dataset.panel === 'scene'   ? '' : 'none';
+    }));
+
+  // model sidebar
+  document.querySelectorAll('.model-item').forEach(item =>
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.model-item').forEach(x => x.classList.remove('active'));
+      item.classList.add('active');
+      state.set('model', item.dataset.model);
+      router.navigate(`#/model/${item.dataset.model}`);
+      document.getElementById('status-text').textContent = 'Model: ' + item.dataset.model;
+    }));
+
+  // bloom
+  const rBloom = document.getElementById('r-bloom');
+  rBloom.addEventListener('input', () => {
+    const v = +rBloom.value;
+    bloomPass.strength = v;
+    document.getElementById('v-bloom').textContent = v.toFixed(2);
+    state.set('bloomIntensity', v);
+  });
+
+  // threshold
+  const rThr = document.getElementById('r-threshold');
+  rThr.addEventListener('input', () => {
+    const v = +rThr.value;
+    bloomPass.threshold = v;
+    document.getElementById('v-threshold').textContent = v.toFixed(2);
+    state.set('bloomThreshold', v);
+  });
+
+  // exposure
+  const rExp = document.getElementById('r-exposure');
+  rExp.addEventListener('input', () => {
+    const v = +rExp.value;
+    renderer.toneMappingExposure = v;
+    document.getElementById('v-exposure').textContent = v.toFixed(2);
+    state.set('exposure', v);
+  });
+
+  // anim speed
+  const rSpd = document.getElementById('r-speed');
+  rSpd.addEventListener('input', () => {
+    animSpeed = +rSpd.value;
+    document.getElementById('v-speed').textContent = animSpeed.toFixed(1) + '×';
+    state.set('animSpeed', animSpeed);
+  });
+
+  // toggles
+  document.getElementById('t-particles').addEventListener('change', e => {
+    particles.visible = e.target.checked;
+    state.set('showParticles', e.target.checked);
+  });
+  document.getElementById('t-postfx').addEventListener('change', e =>
+    state.set('showPostFX', e.target.checked));
+  document.getElementById('t-grid').addEventListener('change', e => {
+    gridHelper.visible = e.target.checked;
+    state.set('showGrid', e.target.checked);
+  });
+  document.getElementById('t-wireframe').addEventListener('change', e =>
+    state.set('wireframe', e.target.checked));
+  document.getElementById('t-fog').addEventListener('change', e => {
+    scene.fog = e.target.checked ? fogRef : null;
+    state.set('showFog', e.target.checked);
+  });
+
+  // screenshot
+  document.getElementById('btn-screenshot').addEventListener('click', () => {
+    composer.render();
+    const a = Object.assign(document.createElement('a'), {
+      href: renderer.domElement.toDataURL('image/png'),
+      download: `chemidex_${Date.now()}.png`,
+    });
+    a.click();
+  });
+
+  // help
+  document.getElementById('btn-help').addEventListener('click', () =>
+    document.getElementById('shortcuts-overlay').style.display = 'flex');
+  document.getElementById('close-shortcuts').addEventListener('click', () =>
+    document.getElementById('shortcuts-overlay').style.display = 'none');
+
+  // sync from saved state
+  animSpeed = state.get('animSpeed');
+  rSpd.value  = animSpeed;
+  rBloom.value = state.get('bloomIntensity');
+  rExp.value   = state.get('exposure');
+  rThr.value   = state.get('bloomThreshold');
+  document.getElementById('v-speed').textContent     = animSpeed.toFixed(1) + '×';
+  document.getElementById('v-bloom').textContent     = (+rBloom.value).toFixed(2);
+  document.getElementById('v-exposure').textContent  = (+rExp.value).toFixed(2);
+  document.getElementById('v-threshold').textContent = (+rThr.value).toFixed(2);
+  document.getElementById('c-fov').textContent = camera.fov + '°';
+  document.getElementById('btn-autorotate').classList.toggle('active', state.get('autoRotate'));
+  document.getElementById('t-particles').checked = state.get('showParticles');
+  document.getElementById('t-fog').checked       = state.get('showFog');
+
+  if (!state.get('sidebarOpen'))    document.getElementById('sidebar').classList.add('collapsed');
+  if (!state.get('rightPanelOpen')) document.getElementById('right-panel').classList.add('collapsed');
+
+  buildGrid();
+  showElement(ELEMENTS.find(e => e.z === (state.get('element') || 1)) || ELEMENTS[0]);
+}
+
+// ──────────────────────────────────────────────────────────────
+// KEYBOARD
+// ──────────────────────────────────────────────────────────────
+function initKeys() {
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    switch (e.key) {
+      case '`':
+        state.set('devMode', !state.get('devMode'));
+        fpsEl.classList.toggle('visible', state.get('devMode'));
+        break;
+      case ' ':
+        e.preventDefault();
+        document.getElementById('btn-autorotate').click();
+        break;
+      case 'r': case 'R':
+        snapView(state.get('activeView'));
+        break;
+      case '1': snapView('front'); break;
+      case '2': snapView('top');   break;
+      case '3': snapView('side');  break;
+      case '4': snapView('iso');   break;
+      case '?':
+        document.getElementById('shortcuts-overlay').style.display = 'flex';
+        break;
+      case 'Escape':
+        document.getElementById('shortcuts-overlay').style.display = 'none';
+        break;
+    }
+  });
+}
+
+// ──────────────────────────────────────────────────────────────
+// LOADING ORBITAL ANIMATION
+// ──────────────────────────────────────────────────────────────
+function animateLoading() {
+  gsap.to('#orb-r1', { rotation: 360, duration: 1.8, ease: 'none', repeat: -1, transformOrigin: '50% 50%' });
+  gsap.to('#orb-r2', { rotation:-360, duration: 2.6, ease: 'none', repeat: -1, transformOrigin: '50% 50%' });
+  gsap.to('#orb-r3', { rotation: 360, duration: 3.4, ease: 'none', repeat: -1, transformOrigin: '50% 50%' });
+
+  const wrap = document.getElementById('orb-wrap');
+  const defs = [
+    { r: 45, a: 0,           sp: 0.022, col: '#6366f1' },
+    { r: 60, a: Math.PI*2/3, sp:-0.015, col: '#8b5cf6' },
+    { r: 75, a: Math.PI*4/3, sp: 0.012, col: '#38bdf8' },
+  ];
+  defs.forEach(d => {
+    const el = document.createElement('div');
+    el.style.cssText = `position:absolute;width:7px;height:7px;border-radius:50%;background:${d.col};box-shadow:0 0 10px ${d.col},0 0 20px ${d.col}60;top:50%;left:50%;margin:-3.5px 0 0 -3.5px;pointer-events:none`;
+    wrap.appendChild(el);
+    let a = d.a;
+    (function tick() {
+      a += d.sp;
+      el.style.transform = `translate(${Math.cos(a)*d.r}px,${Math.sin(a)*d.r*0.35}px)`;
+      requestAnimationFrame(tick);
+    })();
+  });
+}
+
+// ──────────────────────────────────────────────────────────────
+// BOOT
+// ──────────────────────────────────────────────────────────────
+async function boot() {
+  animateLoading();
+
+  const steps = [
+    ['LOADING THREE.JS ENGINE…', 12],
+    ['INITIALIZING RENDERER…',   28],
+    ['COMPILING SHADERS…',       46],
+    ['BUILDING SCENE GRAPH…',    62],
+    ['GENERATING PARTICLES…',    78],
+    ['WIRING UI SYSTEMS…',       90],
+    ['READY.',                   100],
+  ];
+  const bar = document.getElementById('load-bar');
+  const sta = document.getElementById('load-status');
+
+  initScene(); // synchronous
+
+  for (const [msg, pct] of steps) {
+    sta.textContent = msg;
+    bar.style.width = pct + '%';
+    await new Promise(r => setTimeout(r, 110));
+  }
+  await new Promise(r => setTimeout(r, 180));
+
+  initUI();
+  initKeys();
+
+  router
+    .on('model', name => {
+      state.set('model', name);
+      document.querySelectorAll('.model-item').forEach(x =>
+        x.classList.toggle('active', x.dataset.model === name));
+    })
+    .on('element', z => {
+      const el = ELEMENTS.find(e => e.z === z);
+      if (el) showElement(el);
+    })
+    .init();
+
+  // apply saved render params
+  bloomPass.strength  = state.get('bloomIntensity');
+  bloomPass.threshold = state.get('bloomThreshold');
+  renderer.toneMappingExposure = state.get('exposure');
+  controls.autoRotate = state.get('autoRotate');
+
+  animate(); // start render loop
+
+  // reveal UI, hide loader
+  const loading = document.getElementById('loading-screen');
+  const ui      = document.getElementById('main-ui');
+  ui.style.display = 'block';
+
+  gsap.to(loading, { opacity: 0, duration: 0.55, ease: 'power2.in',
+    onComplete: () => loading.style.display = 'none' });
+  gsap.to(ui, { opacity: 1, duration: 0.55, delay: 0.15, ease: 'power2.out' });
+
+  snapView(state.get('activeView') || 'iso');
+}
+
+boot();
+</script>
+</body>
+</html>
