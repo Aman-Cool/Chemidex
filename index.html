@@ -107,6 +107,20 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#
   #sidebar{width:240px}
   #right-panel{width:260px}
 }
+
+/* ── Atom floating labels ─────────────────────────────── */
+#atom-labels{position:fixed;inset:0;z-index:5;pointer-events:none;overflow:hidden}
+.atom-center-lbl{position:absolute;transform:translate(-50%,-50%);text-align:center;pointer-events:none;transition:opacity .3s}
+.shell-lbl{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;cursor:pointer;transition:opacity .3s;white-space:nowrap}
+.shell-lbl:hover .shell-lbl-inner{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25)}
+.shell-lbl-inner{padding:2px 7px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:10px;background:rgba(10,10,18,.7);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(8px);transition:all .15s}
+/* Shell ring highlight */
+.shell-selected-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:10px;border:1px solid;margin-bottom:4px;cursor:pointer;transition:all .15s}
+.shell-selected-badge:hover{opacity:.8}
+/* De Broglie toggle */
+#btn-debroglie.active{background:rgba(251,191,36,.2);color:#fbbf24}
+/* Nucleus zoom btn */
+#btn-zoom-nucleus{}
 </style>
 </head>
 <body class="dark">
@@ -271,12 +285,24 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#
 
       <div style="height:1px;background:rgba(255,255,255,.06);margin:14px 0"></div>
 
+      <!-- Shell selector (Bohr model) -->
+      <div id="shell-selector-section">
+        <div style="font-size:10px;color:rgba(232,232,240,.28);font-family:'JetBrains Mono',monospace;margin-bottom:8px;letter-spacing:1px">ELECTRON SHELLS</div>
+        <div id="shell-badges" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px"></div>
+        <div id="shell-none-hint" style="font-size:11px;color:rgba(232,232,240,.25);font-style:italic">Click a shell ring in the scene or a badge above to inspect it.</div>
+      </div>
+
+      <div style="height:1px;background:rgba(255,255,255,.06);margin:14px 0"></div>
+
       <div style="font-size:10px;color:rgba(232,232,240,.28);font-family:'JetBrains Mono',monospace;margin-bottom:8px;letter-spacing:1px">QUANTUM NUMBERS</div>
       <div>
-        <div class="prop-row"><span class="prop-label">n (Principal)</span><span class="prop-value" id="q-n">1</span></div>
-        <div class="prop-row"><span class="prop-label">l (Angular)</span><span class="prop-value" id="q-l">0</span></div>
-        <div class="prop-row"><span class="prop-label">mₗ (Magnetic)</span><span class="prop-value" id="q-ml">0</span></div>
-        <div class="prop-row"><span class="prop-label">mₛ (Spin)</span><span class="prop-value" id="q-ms">+½</span></div>
+        <div class="prop-row"><span class="prop-label">Shell (n)</span><span class="prop-value" id="q-n">1</span></div>
+        <div class="prop-row"><span class="prop-label">Electrons</span><span class="prop-value" id="q-ecount">1</span></div>
+        <div class="prop-row"><span class="prop-label">l range</span><span class="prop-value" id="q-l">0</span></div>
+        <div class="prop-row"><span class="prop-label">mₗ range</span><span class="prop-value" id="q-ml">0</span></div>
+        <div class="prop-row"><span class="prop-label">mₛ</span><span class="prop-value" id="q-ms">±½</span></div>
+        <div class="prop-row"><span class="prop-label">Max capacity</span><span class="prop-value" id="q-cap">2</span></div>
+        <div class="prop-row"><span class="prop-label">Shell energy</span><span class="prop-value" id="q-energy">−13.6 eV</span></div>
       </div>
     </div>
 
@@ -345,6 +371,16 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
     </button>
 
+    <!-- Zoom nucleus -->
+    <button id="btn-zoom-nucleus" class="btn-icon tip" data-tip="Zoom to Nucleus (N)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+    </button>
+
+    <!-- de Broglie toggle -->
+    <button id="btn-debroglie" class="btn-icon tip active" data-tip="Toggle de Broglie Waves (B)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12 Q5 6 8 12 Q11 18 14 12 Q17 6 20 12 Q22 16 24 12"/></svg>
+    </button>
+
     <div style="width:1px;height:20px;background:rgba(255,255,255,.08)"></div>
 
     <!-- Zoom display -->
@@ -373,6 +409,9 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#
 
 </div><!-- /main-ui -->
 
+<!-- ATOM FLOATING LABELS (lives outside main-ui so pointer-events work) -->
+<div id="atom-labels"></div>
+
 <!-- SHORTCUTS OVERLAY -->
 <div id="shortcuts-overlay">
   <div class="glass" style="width:420px;max-width:90vw;border-radius:12px;padding:24px">
@@ -390,9 +429,12 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#
       <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">2</code><span>Top view</span>
       <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">3</code><span>Side view</span>
       <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">4</code><span>Isometric view</span>
+      <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">N / dbl-click</code><span>Zoom to nucleus / zoom out</span>
+      <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">B</code><span>Toggle de Broglie wave rings</span>
+      <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">Click shell</span><span>Inspect shell quantum numbers</span>
       <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">` (backtick)</code><span>Toggle FPS / dev-mode</span>
       <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">?</code><span>This help panel</span>
-      <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">Esc</code><span>Close overlays</span>
+      <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">Esc</code><span>Close overlays / deselect shell</span>
     </div>
   </div>
 </div>
@@ -417,27 +459,165 @@ import { SMAAPass }         from 'three/addons/postprocessing/SMAAPass.js';
 import { OutputPass }       from 'three/addons/postprocessing/OutputPass.js';
 
 // ──────────────────────────────────────────────────────────────
-// ELEMENTS DATA  (first 36)
+// SHELL CONFIG — Aufbau principle (assigns electrons to n shells)
 // ──────────────────────────────────────────────────────────────
+function computeShells(z) {
+  // Aufbau fill order: [n, capacity].  n = principal quantum number.
+  const ORD = [
+    [1,2],[2,2],[2,6],[3,2],[3,6],[4,2],[3,10],[4,6],
+    [5,2],[4,10],[5,6],[6,2],[4,14],[5,10],[6,6],
+    [7,2],[5,14],[6,10],[7,6]
+  ];
+  const s = [0,0,0,0,0,0,0];
+  let rem = z;
+  for (const [n,cap] of ORD) {
+    if (rem <= 0) break;
+    const fill = Math.min(rem, cap);
+    s[n-1] += fill;
+    rem -= fill;
+  }
+  return s; // indices 0-6 = shells n=1..7
+}
+
+// Visual colour per shell (K→Q)
+const SHELL_COLORS = [0xff6b6b,0xff9f43,0xffd43b,0x51cf66,0x22d3ee,0xa78bfa,0xf472b6];
+const SHELL_NAMES  = ['K','L','M','N','O','P','Q'];
+
+// ──────────────────────────────────────────────────────────────
+// ELEMENTS DATA — all 118
+// format: [z, sym, name, mass, period, group, block, col, en?, r?, ie?, st?, cfg?]
+// ──────────────────────────────────────────────────────────────
+const _E = (z,s,n,m,p,g,b,c,en,r,ie,st,cfg) => ({
+  z,sym:s,name:n,mass:m,p,g,b,col:c,
+  en:en??null,r:r??null,ie:ie??null,st:st??null,cfg:cfg??null,
+  shells:computeShells(z)
+});
 const ELEMENTS = [
-  {z:1,  sym:'H',  name:'Hydrogen',   mass:1.008,  p:1, g:1,  b:'s', cfg:'1s¹',           en:2.20, r:53,  ie:13.598, st:'Gas',   col:'#e2e8f0'},
-  {z:2,  sym:'He', name:'Helium',     mass:4.003,  p:1, g:18, b:'s', cfg:'1s²',           en:null, r:31,  ie:24.587, st:'Gas',   col:'#bfdbfe'},
-  {z:3,  sym:'Li', name:'Lithium',    mass:6.941,  p:2, g:1,  b:'s', cfg:'[He] 2s¹',     en:0.98, r:167, ie:5.392,  st:'Solid', col:'#fca5a5'},
-  {z:4,  sym:'Be', name:'Beryllium',  mass:9.012,  p:2, g:2,  b:'s', cfg:'[He] 2s²',     en:1.57, r:112, ie:9.323,  st:'Solid', col:'#86efac'},
-  {z:5,  sym:'B',  name:'Boron',      mass:10.811, p:2, g:13, b:'p', cfg:'[He] 2s²2p¹',  en:2.04, r:87,  ie:8.298,  st:'Solid', col:'#fdba74'},
-  {z:6,  sym:'C',  name:'Carbon',     mass:12.011, p:2, g:14, b:'p', cfg:'[He] 2s²2p²',  en:2.55, r:67,  ie:11.260, st:'Solid', col:'#d1d5db'},
-  {z:7,  sym:'N',  name:'Nitrogen',   mass:14.007, p:2, g:15, b:'p', cfg:'[He] 2s²2p³',  en:3.04, r:56,  ie:14.534, st:'Gas',   col:'#93c5fd'},
-  {z:8,  sym:'O',  name:'Oxygen',     mass:15.999, p:2, g:16, b:'p', cfg:'[He] 2s²2p⁴',  en:3.44, r:48,  ie:13.618, st:'Gas',   col:'#fca5a5'},
-  {z:9,  sym:'F',  name:'Fluorine',   mass:18.998, p:2, g:17, b:'p', cfg:'[He] 2s²2p⁵',  en:3.98, r:42,  ie:17.423, st:'Gas',   col:'#6ee7b7'},
-  {z:10, sym:'Ne', name:'Neon',       mass:20.180, p:2, g:18, b:'p', cfg:'[He] 2s²2p⁶',  en:null, r:38,  ie:21.565, st:'Gas',   col:'#c4b5fd'},
-  {z:11, sym:'Na', name:'Sodium',     mass:22.990, p:3, g:1,  b:'s', cfg:'[Ne] 3s¹',     en:0.93, r:190, ie:5.139,  st:'Solid', col:'#fed7aa'},
-  {z:12, sym:'Mg', name:'Magnesium',  mass:24.305, p:3, g:2,  b:'s', cfg:'[Ne] 3s²',     en:1.31, r:160, ie:7.646,  st:'Solid', col:'#bbf7d0'},
-  {z:13, sym:'Al', name:'Aluminum',   mass:26.982, p:3, g:13, b:'p', cfg:'[Ne] 3s²3p¹',  en:1.61, r:143, ie:5.986,  st:'Solid', col:'#e5e7eb'},
-  {z:14, sym:'Si', name:'Silicon',    mass:28.086, p:3, g:14, b:'p', cfg:'[Ne] 3s²3p²',  en:1.90, r:117, ie:8.152,  st:'Solid', col:'#d4a574'},
-  {z:15, sym:'P',  name:'Phosphorus', mass:30.974, p:3, g:15, b:'p', cfg:'[Ne] 3s²3p³',  en:2.19, r:98,  ie:10.487, st:'Solid', col:'#fb923c'},
-  {z:16, sym:'S',  name:'Sulfur',     mass:32.065, p:3, g:16, b:'p', cfg:'[Ne] 3s²3p⁴',  en:2.58, r:88,  ie:10.360, st:'Solid', col:'#fde047'},
-  {z:17, sym:'Cl', name:'Chlorine',   mass:35.453, p:3, g:17, b:'p', cfg:'[Ne] 3s²3p⁵',  en:3.16, r:79,  ie:12.968, st:'Gas',   col:'#86efac'},
-  {z:18, sym:'Ar', name:'Argon',      mass:39.948, p:3, g:18, b:'p', cfg:'[Ne] 3s²3p⁶',  en:null, r:71,  ie:15.760, st:'Gas',   col:'#a5b4fc'},
+  // ── Period 1 ───────────────────────────────────────────────
+  _E(1,'H','Hydrogen',1.008,1,1,'s','#e2e8f0',2.20,53,13.598,'Gas','1s¹'),
+  _E(2,'He','Helium',4.003,1,18,'s','#bfdbfe',null,31,24.587,'Gas','1s²'),
+  // ── Period 2 ───────────────────────────────────────────────
+  _E(3,'Li','Lithium',6.941,2,1,'s','#fca5a5',0.98,167,5.392,'Solid','[He] 2s¹'),
+  _E(4,'Be','Beryllium',9.012,2,2,'s','#86efac',1.57,112,9.323,'Solid','[He] 2s²'),
+  _E(5,'B','Boron',10.811,2,13,'p','#fdba74',2.04,87,8.298,'Solid','[He] 2s²2p¹'),
+  _E(6,'C','Carbon',12.011,2,14,'p','#d1d5db',2.55,67,11.260,'Solid','[He] 2s²2p²'),
+  _E(7,'N','Nitrogen',14.007,2,15,'p','#93c5fd',3.04,56,14.534,'Gas','[He] 2s²2p³'),
+  _E(8,'O','Oxygen',15.999,2,16,'p','#fca5a5',3.44,48,13.618,'Gas','[He] 2s²2p⁴'),
+  _E(9,'F','Fluorine',18.998,2,17,'p','#6ee7b7',3.98,42,17.423,'Gas','[He] 2s²2p⁵'),
+  _E(10,'Ne','Neon',20.180,2,18,'p','#c4b5fd',null,38,21.565,'Gas','[He] 2s²2p⁶'),
+  // ── Period 3 ───────────────────────────────────────────────
+  _E(11,'Na','Sodium',22.990,3,1,'s','#fed7aa',0.93,190,5.139,'Solid','[Ne] 3s¹'),
+  _E(12,'Mg','Magnesium',24.305,3,2,'s','#bbf7d0',1.31,160,7.646,'Solid','[Ne] 3s²'),
+  _E(13,'Al','Aluminum',26.982,3,13,'p','#e5e7eb',1.61,143,5.986,'Solid','[Ne] 3s²3p¹'),
+  _E(14,'Si','Silicon',28.086,3,14,'p','#d4a574',1.90,117,8.152,'Solid','[Ne] 3s²3p²'),
+  _E(15,'P','Phosphorus',30.974,3,15,'p','#fb923c',2.19,98,10.487,'Solid','[Ne] 3s²3p³'),
+  _E(16,'S','Sulfur',32.065,3,16,'p','#fde047',2.58,88,10.360,'Solid','[Ne] 3s²3p⁴'),
+  _E(17,'Cl','Chlorine',35.453,3,17,'p','#86efac',3.16,79,12.968,'Gas','[Ne] 3s²3p⁵'),
+  _E(18,'Ar','Argon',39.948,3,18,'p','#a5b4fc',null,71,15.760,'Gas','[Ne] 3s²3p⁶'),
+  // ── Period 4 ───────────────────────────────────────────────
+  _E(19,'K','Potassium',39.098,4,1,'s','#ff6b6b',0.82,243,4.341,'Solid'),
+  _E(20,'Ca','Calcium',40.078,4,2,'s','#51cf66',1.00,194,6.113,'Solid'),
+  _E(21,'Sc','Scandium',44.956,4,3,'d','#74c0fc',1.36,184,6.561,'Solid'),
+  _E(22,'Ti','Titanium',47.867,4,4,'d','#74c0fc',1.54,176,6.828,'Solid'),
+  _E(23,'V','Vanadium',50.942,4,5,'d','#74c0fc',1.63,171,6.746,'Solid'),
+  _E(24,'Cr','Chromium',51.996,4,6,'d','#74c0fc',1.66,166,6.767,'Solid'),
+  _E(25,'Mn','Manganese',54.938,4,7,'d','#74c0fc',1.55,161,7.434,'Solid'),
+  _E(26,'Fe','Iron',55.845,4,8,'d','#74c0fc',1.83,156,7.902,'Solid'),
+  _E(27,'Co','Cobalt',58.933,4,9,'d','#74c0fc',1.88,152,7.881,'Solid'),
+  _E(28,'Ni','Nickel',58.693,4,10,'d','#74c0fc',1.91,149,7.640,'Solid'),
+  _E(29,'Cu','Copper',63.546,4,11,'d','#74c0fc',1.90,145,7.726,'Solid'),
+  _E(30,'Zn','Zinc',65.38,4,12,'d','#74c0fc',1.65,142,9.394,'Solid'),
+  _E(31,'Ga','Gallium',69.723,4,13,'p','#a9e34b',1.81,136,5.999,'Solid'),
+  _E(32,'Ge','Germanium',72.63,4,14,'p','#ffd43b',2.01,125,7.900,'Solid'),
+  _E(33,'As','Arsenic',74.922,4,15,'p','#ffd43b',2.18,114,9.815,'Solid'),
+  _E(34,'Se','Selenium',78.96,4,16,'p','#fde047',2.55,103,9.752,'Solid'),
+  _E(35,'Br','Bromine',79.904,4,17,'p','#69db7c',2.96,94,11.814,'Liquid'),
+  _E(36,'Kr','Krypton',83.798,4,18,'p','#da77f2',3.00,88,13.999,'Gas'),
+  // ── Period 5 ───────────────────────────────────────────────
+  _E(37,'Rb','Rubidium',85.468,5,1,'s','#ff6b6b',0.82,265,4.177,'Solid'),
+  _E(38,'Sr','Strontium',87.62,5,2,'s','#51cf66',0.95,219,5.695,'Solid'),
+  _E(39,'Y','Yttrium',88.906,5,3,'d','#74c0fc',1.22,212,6.217,'Solid'),
+  _E(40,'Zr','Zirconium',91.224,5,4,'d','#74c0fc',1.33,206,6.634,'Solid'),
+  _E(41,'Nb','Niobium',92.906,5,5,'d','#74c0fc',1.60,198,6.759,'Solid'),
+  _E(42,'Mo','Molybdenum',95.96,5,6,'d','#74c0fc',2.16,190,7.092,'Solid'),
+  _E(43,'Tc','Technetium',98,5,7,'d','#74c0fc',1.90,183,7.280,'Solid'),
+  _E(44,'Ru','Ruthenium',101.07,5,8,'d','#74c0fc',2.20,178,7.361,'Solid'),
+  _E(45,'Rh','Rhodium',102.906,5,9,'d','#74c0fc',2.28,173,7.459,'Solid'),
+  _E(46,'Pd','Palladium',106.42,5,10,'d','#74c0fc',2.20,169,8.337,'Solid'),
+  _E(47,'Ag','Silver',107.868,5,11,'d','#74c0fc',1.93,165,7.576,'Solid'),
+  _E(48,'Cd','Cadmium',112.411,5,12,'d','#74c0fc',1.69,161,8.994,'Solid'),
+  _E(49,'In','Indium',114.818,5,13,'p','#a9e34b',1.78,156,5.786,'Solid'),
+  _E(50,'Sn','Tin',118.71,5,14,'p','#a9e34b',1.96,145,7.344,'Solid'),
+  _E(51,'Sb','Antimony',121.76,5,15,'p','#ffd43b',2.05,133,8.609,'Solid'),
+  _E(52,'Te','Tellurium',127.6,5,16,'p','#ffd43b',2.10,123,9.010,'Solid'),
+  _E(53,'I','Iodine',126.904,5,17,'p','#69db7c',2.66,115,10.451,'Solid'),
+  _E(54,'Xe','Xenon',131.293,5,18,'p','#da77f2',2.60,108,12.130,'Gas'),
+  // ── Period 6 ───────────────────────────────────────────────
+  _E(55,'Cs','Cesium',132.905,6,1,'s','#ff6b6b',0.79,298,3.894,'Solid'),
+  _E(56,'Ba','Barium',137.327,6,2,'s','#51cf66',0.89,253,5.212,'Solid'),
+  _E(57,'La','Lanthanum',138.905,6,3,'d','#ffa94d',1.10,195,5.577,'Solid'),
+  _E(58,'Ce','Cerium',140.116,6,0,'f','#ffa94d',1.12,185,5.539,'Solid'),
+  _E(59,'Pr','Praseodymium',140.908,6,0,'f','#ffa94d',1.13,185,5.473,'Solid'),
+  _E(60,'Nd','Neodymium',144.242,6,0,'f','#ffa94d',1.14,185,5.525,'Solid'),
+  _E(61,'Pm','Promethium',145,6,0,'f','#ffa94d',null,185,5.582,'Solid'),
+  _E(62,'Sm','Samarium',150.36,6,0,'f','#ffa94d',1.17,185,5.644,'Solid'),
+  _E(63,'Eu','Europium',151.964,6,0,'f','#ffa94d',null,185,5.670,'Solid'),
+  _E(64,'Gd','Gadolinium',157.25,6,0,'f','#ffa94d',1.20,180,6.150,'Solid'),
+  _E(65,'Tb','Terbium',158.925,6,0,'f','#ffa94d',null,175,5.864,'Solid'),
+  _E(66,'Dy','Dysprosium',162.5,6,0,'f','#ffa94d',1.22,175,5.939,'Solid'),
+  _E(67,'Ho','Holmium',164.93,6,0,'f','#ffa94d',1.23,175,6.022,'Solid'),
+  _E(68,'Er','Erbium',167.259,6,0,'f','#ffa94d',1.24,175,6.108,'Solid'),
+  _E(69,'Tm','Thulium',168.934,6,0,'f','#ffa94d',1.25,175,6.184,'Solid'),
+  _E(70,'Yb','Ytterbium',173.054,6,0,'f','#ffa94d',null,175,6.254,'Solid'),
+  _E(71,'Lu','Lutetium',174.967,6,3,'d','#ffa94d',1.27,175,5.426,'Solid'),
+  _E(72,'Hf','Hafnium',178.49,6,4,'d','#74c0fc',1.30,187,6.825,'Solid'),
+  _E(73,'Ta','Tantalum',180.948,6,5,'d','#74c0fc',1.50,170,7.549,'Solid'),
+  _E(74,'W','Tungsten',183.84,6,6,'d','#74c0fc',2.36,162,7.864,'Solid'),
+  _E(75,'Re','Rhenium',186.207,6,7,'d','#74c0fc',1.90,151,7.834,'Solid'),
+  _E(76,'Os','Osmium',190.23,6,8,'d','#74c0fc',2.20,144,8.438,'Solid'),
+  _E(77,'Ir','Iridium',192.217,6,9,'d','#74c0fc',2.20,141,8.967,'Solid'),
+  _E(78,'Pt','Platinum',195.084,6,10,'d','#74c0fc',2.28,136,8.959,'Solid'),
+  _E(79,'Au','Gold',196.967,6,11,'d','#fbbf24',2.54,136,9.226,'Solid'),
+  _E(80,'Hg','Mercury',200.59,6,12,'d','#74c0fc',2.00,132,10.437,'Liquid'),
+  _E(81,'Tl','Thallium',204.383,6,13,'p','#a9e34b',1.62,145,6.108,'Solid'),
+  _E(82,'Pb','Lead',207.2,6,14,'p','#a9e34b',2.33,146,7.417,'Solid'),
+  _E(83,'Bi','Bismuth',208.98,6,15,'p','#a9e34b',2.02,148,7.289,'Solid'),
+  _E(84,'Po','Polonium',209,6,16,'p','#ffd43b',2.00,140,8.417,'Solid'),
+  _E(85,'At','Astatine',210,6,17,'p','#69db7c',2.20,150,9.318,'Solid'),
+  _E(86,'Rn','Radon',222,6,18,'p','#da77f2',null,150,10.745,'Gas'),
+  // ── Period 7 ───────────────────────────────────────────────
+  _E(87,'Fr','Francium',223,7,1,'s','#ff6b6b',0.70,null,4.073,'Solid'),
+  _E(88,'Ra','Radium',226,7,2,'s','#51cf66',0.90,null,5.279,'Solid'),
+  _E(89,'Ac','Actinium',227,7,3,'d','#ff922b',1.10,195,5.170,'Solid'),
+  _E(90,'Th','Thorium',232.038,7,0,'f','#ff922b',1.30,180,6.307,'Solid'),
+  _E(91,'Pa','Protactinium',231.036,7,0,'f','#ff922b',1.50,180,5.890,'Solid'),
+  _E(92,'U','Uranium',238.029,7,0,'f','#ff922b',1.38,175,6.194,'Solid'),
+  _E(93,'Np','Neptunium',237,7,0,'f','#ff922b',1.36,175,6.266,'Solid'),
+  _E(94,'Pu','Plutonium',244,7,0,'f','#ff922b',1.28,175,6.026,'Solid'),
+  _E(95,'Am','Americium',243,7,0,'f','#ff922b',1.30,175,5.974,'Solid'),
+  _E(96,'Cm','Curium',247,7,0,'f','#ff922b',1.30,null,5.991,'Solid'),
+  _E(97,'Bk','Berkelium',247,7,0,'f','#ff922b',1.30,null,6.198,'Solid'),
+  _E(98,'Cf','Californium',251,7,0,'f','#ff922b',1.30,null,6.282,'Solid'),
+  _E(99,'Es','Einsteinium',252,7,0,'f','#ff922b',1.30,null,6.420,'Solid'),
+  _E(100,'Fm','Fermium',257,7,0,'f','#ff922b',1.30,null,6.500,'Solid'),
+  _E(101,'Md','Mendelevium',258,7,0,'f','#ff922b',1.30,null,6.580,'Solid'),
+  _E(102,'No','Nobelium',259,7,0,'f','#ff922b',1.30,null,6.650,'Solid'),
+  _E(103,'Lr','Lawrencium',262,7,3,'d','#ff922b',null,null,4.900,'Solid'),
+  _E(104,'Rf','Rutherfordium',265,7,4,'d','#cc5de8',null,null,null,'Solid'),
+  _E(105,'Db','Dubnium',268,7,5,'d','#cc5de8',null,null,null,'Solid'),
+  _E(106,'Sg','Seaborgium',271,7,6,'d','#cc5de8',null,null,null,'Solid'),
+  _E(107,'Bh','Bohrium',270,7,7,'d','#cc5de8',null,null,null,'Solid'),
+  _E(108,'Hs','Hassium',277,7,8,'d','#cc5de8',null,null,null,'Solid'),
+  _E(109,'Mt','Meitnerium',276,7,9,'d','#cc5de8',null,null,null,'Solid'),
+  _E(110,'Ds','Darmstadtium',281,7,10,'d','#cc5de8',null,null,null,'Solid'),
+  _E(111,'Rg','Roentgenium',280,7,11,'d','#cc5de8',null,null,null,'Solid'),
+  _E(112,'Cn','Copernicium',285,7,12,'d','#cc5de8',null,null,null,'Solid'),
+  _E(113,'Nh','Nihonium',284,7,13,'p','#cc5de8',null,null,null,'Solid'),
+  _E(114,'Fl','Flerovium',289,7,14,'p','#cc5de8',null,null,null,'Solid'),
+  _E(115,'Mc','Moscovium',288,7,15,'p','#cc5de8',null,null,null,'Solid'),
+  _E(116,'Lv','Livermorium',293,7,16,'p','#cc5de8',null,null,null,'Solid'),
+  _E(117,'Ts','Tennessine',294,7,17,'p','#cc5de8',null,null,null,'Solid'),
+  _E(118,'Og','Oganesson',294,7,18,'p','#cc5de8',null,null,null,'Gas'),
 ];
 
 // ──────────────────────────────────────────────────────────────
@@ -662,7 +842,7 @@ function initParticles() {
   for (let i = 0; i < N; i++) {
     const phi   = Math.acos(2 * Math.random() - 1);
     const theta = Math.random() * Math.PI * 2;
-    const r     = 8 + Math.random() * 14;
+    const r     = 22 + Math.random() * 18; // pushed out beyond largest atom shell
     pos[i*3]   = r * Math.sin(phi) * Math.cos(theta);
     pos[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
     pos[i*3+2] = r * Math.cos(phi);
@@ -733,8 +913,15 @@ function snapView(name) {
   document.querySelectorAll('.view-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.view === name));
 
+  // Scale camera distance to fit the current atom
+  const outerR  = bohrAtom ? bohrAtom.getOuterRadius() : 5;
+  const tarDist  = Math.max(outerR * 2.6, 3.2);
+  const [px,py,pz] = v.p;
+  const baseLen  = Math.sqrt(px*px + py*py + pz*pz);
+  const sc       = tarDist / baseLen;
+
   gsap.to(camera.position, {
-    x: v.p[0], y: v.p[1], z: v.p[2],
+    x: px*sc, y: py*sc, z: pz*sc,
     duration: 0.85, ease: 'power3.inOut',
     onUpdate: () => controls.update(),
   });
@@ -746,6 +933,468 @@ function snapView(name) {
 }
 
 // ──────────────────────────────────────────────────────────────
+// BOHR ATOM
+// ──────────────────────────────────────────────────────────────
+const BOHR_SCALE  = 0.28;   // visual units per (n² × a₀)
+const BOHR_BASE   = 0.55;   // minimum inner-shell radius offset
+const TRAIL_PTS   = 26;     // trail history length per electron
+const _tv         = new THREE.Vector3(); // reusable tmp vector
+const _tm         = new THREE.Matrix4(); // reusable tmp matrix
+
+class BohrAtom {
+  constructor(scene, labelRoot) {
+    this.scene      = scene;
+    this.labelRoot  = labelRoot;   // #atom-labels div
+    this.root       = new THREE.Group();
+    scene.add(this.root);
+
+    this.shells      = [];   // ShellData[]
+    this.electrons   = [];   // ElectronData[]
+    this.domLabels   = [];   // HTMLElement[]
+    this.shellMeshes = [];   // ring Mesh[] for raycasting
+    this._selShell   = -1;
+    this._transitioning = false;
+    this.showDeBroglie  = true;
+
+    // Shared electron geometry (never re-created)
+    this._eGeo = new THREE.SphereGeometry(0.07, 8, 6);
+  }
+
+  // ─── public API ────────────────────────────────────────────
+
+  build(elData) {
+    this._clearAll();
+    const { z, col, shells } = elData;
+
+    this._buildNucleus(z, col);
+
+    shells.forEach((count, i) => {
+      if (!count) return;
+      const n   = i + 1;
+      const rad = n * n * BOHR_SCALE + BOHR_BASE;
+      this._buildShell(n, count, rad, new THREE.Color(SHELL_COLORS[i]));
+    });
+
+    this._buildCenterLabel(elData);
+  }
+
+  transitionTo(elData, onDone) {
+    if (this._transitioning) {
+      // Force-complete: just build immediately
+      this.build(elData);
+      if (onDone) onDone();
+      return;
+    }
+    this._transitioning = true;
+
+    if (this.electrons.length === 0) {
+      this.build(elData);
+      this._transitioning = false;
+      if (onDone) onDone();
+      return;
+    }
+
+    // Collect all fading targets
+    const eMats = this.electrons.map(e => e.mesh.material);
+    const nMat  = this._nucleusMesh ? [this._nucleusMesh.material] : [];
+    const allMats = [...eMats, ...nMat];
+
+    gsap.to(allMats, {
+      emissiveIntensity: 0,
+      duration: 0.3,
+      ease: 'power2.in',
+      onComplete: () => {
+        this.build(elData);
+        // Fade electrons in
+        const newMats = this.electrons.map(e => e.mesh.material);
+        newMats.forEach(m => { m.emissiveIntensity = 0; });
+        gsap.to(newMats, { emissiveIntensity: 2, duration: 0.5, ease: 'power2.out' });
+        if (this._nucleusMesh) {
+          this._nucleusMesh.material.emissiveIntensity = 0;
+          gsap.to(this._nucleusMesh.material, { emissiveIntensity: 1.8, duration: 0.5, ease: 'power2.out' });
+        }
+        this._transitioning = false;
+        if (onDone) onDone();
+      }
+    });
+  }
+
+  animate(dt, camera, domEl) {
+    if (!this.root.visible) return;
+    const spd = animSpeed;
+
+    for (const ed of this.electrons) {
+      ed.angle += ed.speed * dt * spd;
+
+      // Position on tilted orbit using pre-baked rotation matrix
+      _tv.set(ed.radius * Math.cos(ed.angle), 0, ed.radius * Math.sin(ed.angle));
+      _tv.applyMatrix4(ed.rotMat);
+      ed.mesh.position.copy(_tv);
+
+      // Shift trail buffer (oldest→newest, index N-1 = electron head)
+      const tp = ed.trailPos;
+      const N3 = TRAIL_PTS * 3;
+      tp.copyWithin(0, 3, N3);       // shift left by one element
+      tp[N3-3] = _tv.x;
+      tp[N3-2] = _tv.y;
+      tp[N3-1] = _tv.z;
+      ed.trailGeo.attributes.position.needsUpdate = true;
+    }
+
+    this._updateDomLabels(camera, domEl);
+  }
+
+  selectShell(n) {
+    this._selShell = n;
+    for (const sh of this.shells) {
+      const sel = sh.n === n;
+      sh.ringMat.opacity         = sel ? 0.75 : 0.2;
+      sh.ringMat.color.setHex(sel ? 0xffffff : SHELL_COLORS[sh.n - 1]);
+      sh.dBMat.opacity           = sel ? 0.55 : (this.showDeBroglie ? 0.28 : 0);
+      for (const ed of sh.electrons) {
+        ed.mesh.material.emissiveIntensity = sel ? 4.5 : 1.5;
+      }
+    }
+    this._updateShellPanel(n);
+  }
+
+  clearSelection() {
+    this._selShell = -1;
+    for (const sh of this.shells) {
+      sh.ringMat.opacity = 0.25;
+      sh.ringMat.color.setHex(SHELL_COLORS[sh.n - 1]);
+      sh.dBMat.opacity   = this.showDeBroglie ? 0.28 : 0;
+      for (const ed of sh.electrons) {
+        ed.mesh.material.emissiveIntensity = 2;
+      }
+    }
+    this._clearShellPanel();
+  }
+
+  setDeBroglie(visible) {
+    this.showDeBroglie = visible;
+    for (const sh of this.shells) {
+      sh.dBLine.visible = visible;
+      sh.dBMat.opacity  = visible ? (sh.n === this._selShell ? 0.55 : 0.28) : 0;
+    }
+  }
+
+  getOuterRadius() {
+    if (!this.shells.length) return 5;
+    return this.shells[this.shells.length - 1].radius;
+  }
+
+  setVisible(v) { this.root.visible = v; }
+
+  dispose() {
+    this._clearAll();
+    this._eGeo.dispose();
+    this.scene.remove(this.root);
+  }
+
+  // ─── internal builders ─────────────────────────────────────
+
+  _buildNucleus(z, col) {
+    const r   = Math.min(0.065 + 0.007 * Math.log(z + 1), 0.28);
+    const geo = new THREE.SphereGeometry(r, 32, 24);
+    const mat = new THREE.MeshStandardMaterial({
+      color:            new THREE.Color(col),
+      emissive:         new THREE.Color(col),
+      emissiveIntensity:1.8,
+      roughness:        0.25,
+      metalness:        0.7,
+    });
+    this._nucleusMesh = new THREE.Mesh(geo, mat);
+    this.root.add(this._nucleusMesh);
+
+    // Nucleus glow light
+    const pl = new THREE.PointLight(new THREE.Color(col), 1.2, 5);
+    this._nucleusMesh.add(pl);
+    this._nucleusGeo = geo;
+  }
+
+  _buildShell(n, count, radius, color) {
+    // ── orbital ring ──────────────────────────────────────────
+    const ringGeo = new THREE.TorusGeometry(radius, 0.013, 6, 120);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color:       color.clone(),
+      transparent: true,
+      opacity:     0.25,
+      depthWrite:  false,
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    // Each shell slightly tilted for 3-D depth
+    ring.rotation.x = Math.PI / 2 + (n - 1) * 0.09;
+    ring.rotation.z = (n - 1) * 0.13;
+    ring.userData   = { type: 'shell', shellN: n };
+    this.root.add(ring);
+    this.shellMeshes.push(ring);
+
+    // ── de Broglie wave ring (nλ = 2πr) ──────────────────────
+    const { dBLine, dBMat } = this._buildDeBroglie(n, radius, color);
+    // Match ring tilt
+    dBLine.rotation.x = ring.rotation.x;
+    dBLine.rotation.z = ring.rotation.z;
+    dBLine.visible    = this.showDeBroglie;
+    this.root.add(dBLine);
+
+    // ── electrons ─────────────────────────────────────────────
+    const electronData = [];
+    for (let i = 0; i < count; i++) {
+      const ed = this._buildElectron(n, i, count, radius, color);
+      electronData.push(ed);
+      this.electrons.push(ed);
+    }
+
+    // ── shell label (DOM) ─────────────────────────────────────
+    const lbl = this._createShellLabel(n, count, color);
+
+    this.shells.push({ n, electronCount: count, radius, ring, ringMat, dBLine, dBMat, electrons: electronData, lbl });
+  }
+
+  _buildDeBroglie(n, radius, color) {
+    // Draw n full sine-wave oscillations around the orbit path
+    const segs = n * 72;
+    const amp  = Math.min(0.07 + n * 0.005, 0.14);
+    const pos  = new Float32Array((segs + 1) * 3);
+    for (let i = 0; i <= segs; i++) {
+      const t = (i / segs) * Math.PI * 2;
+      const r = radius + Math.sin(t * n) * amp;
+      pos[i*3]   = r * Math.cos(t);
+      pos[i*3+1] = 0;
+      pos[i*3+2] = r * Math.sin(t);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const mat = new THREE.LineBasicMaterial({
+      color:       color.clone(),
+      transparent: true,
+      opacity:     0.28,
+      depthWrite:  false,
+    });
+    const dBLine = new THREE.LineLoop(geo, mat);
+    return { dBLine, dBMat: mat };
+  }
+
+  _buildElectron(n, idx, total, radius, color) {
+    const mat = new THREE.MeshStandardMaterial({
+      color:            color.clone(),
+      emissive:         color.clone(),
+      emissiveIntensity:2,
+      roughness:        0.1,
+      metalness:        0.05,
+    });
+    const mesh = new THREE.Mesh(this._eGeo, mat);
+    this.root.add(mesh);
+
+    // ── trail ─────────────────────────────────────────────────
+    const trailPos = new Float32Array(TRAIL_PTS * 3); // all at origin initially
+    const alpha    = new Float32Array(TRAIL_PTS);
+    for (let i = 0; i < TRAIL_PTS; i++) alpha[i] = i / TRAIL_PTS;
+
+    const trailGeo = new THREE.BufferGeometry();
+    trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+    trailGeo.setAttribute('alpha',    new THREE.BufferAttribute(alpha,    1));
+
+    const trailMat = new THREE.ShaderMaterial({
+      uniforms: { uCol: { value: color.clone() } },
+      vertexShader: `
+        attribute float alpha; varying float vA;
+        void main(){ vA=alpha; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+      fragmentShader: `
+        uniform vec3 uCol; varying float vA;
+        void main(){ gl_FragColor=vec4(uCol, vA*0.55); }`,
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    });
+    const trail = new THREE.Line(trailGeo, trailMat);
+    this.root.add(trail);
+
+    // ── orbital parameters ────────────────────────────────────
+    // Speed ∝ 1/n  (inner shells orbit faster — Bohr velocity rule)
+    const speed      = 1.8 / n;
+    // Initial phase: space electrons evenly around the orbit
+    const angle      = (idx / total) * Math.PI * 2;
+    // Orbital plane: use golden-angle distribution for beautiful 3-D spread
+    const planeAngle = (idx * 2.399963) % (Math.PI * 2); // golden angle ≈ 137.5°
+    const tiltX      = Math.sin(planeAngle) * (Math.PI * 0.28);
+    const tiltY      = planeAngle;
+    const tiltZ      = Math.cos(planeAngle) * (Math.PI * 0.12);
+
+    // Pre-bake rotation matrix so animate() does zero object allocation
+    const rotMat = new THREE.Matrix4().makeRotationFromEuler(
+      new THREE.Euler(tiltX, tiltY, tiltZ)
+    );
+
+    return { mesh, trail, trailGeo, trailPos, n, radius, speed, angle, rotMat, color: color.clone() };
+  }
+
+  _createShellLabel(n, count, color) {
+    const hex = '#' + color.getHexString();
+    const el  = document.createElement('div');
+    el.className       = 'shell-lbl';
+    el.dataset.shellN  = n;
+    el.innerHTML = `<div class="shell-lbl-inner" style="color:${hex}">
+      ${SHELL_NAMES[n-1]} &nbsp;n=${n} &nbsp;${count}e⁻
+    </div>`;
+    el.addEventListener('click', () => {
+      if (this._selShell === n) this.clearSelection();
+      else this.selectShell(n);
+    });
+    this.labelRoot.appendChild(el);
+    this.domLabels.push(el);
+    return el;
+  }
+
+  _buildCenterLabel(elData) {
+    const el = document.createElement('div');
+    el.className = 'atom-center-lbl';
+    el.id        = 'atom-center-lbl';
+    el.innerHTML = `
+      <div style="font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;
+                  color:${elData.col};text-shadow:0 0 18px ${elData.col}99">${elData.sym}</div>
+      <div style="font-size:10px;color:rgba(232,232,240,.45);margin-top:1px">${elData.name}</div>
+      <div style="font-size:9px;color:rgba(232,232,240,.25);font-family:'JetBrains Mono',monospace">Z=${elData.z}</div>`;
+    this.labelRoot.appendChild(el);
+    this.domLabels.push(el);
+  }
+
+  // ─── DOM label projection ──────────────────────────────────
+
+  _updateDomLabels(camera, domEl) {
+    const W = domEl.clientWidth, H = domEl.clientHeight;
+
+    // Center label at nucleus (origin)
+    const cl = document.getElementById('atom-center-lbl');
+    if (cl) {
+      _tv.set(0, 0, 0).project(camera);
+      if (_tv.z < 1) {
+        cl.style.left    = ((_tv.x * 0.5 + 0.5) * W) + 'px';
+        cl.style.top     = ((-_tv.y * 0.5 + 0.5) * H) + 'px';
+        cl.style.display = '';
+      } else { cl.style.display = 'none'; }
+    }
+
+    // Shell labels: track a slowly-drifting point on each shell ring
+    const now = performance.now() * 0.00014;
+    for (const sh of this.shells) {
+      if (!sh.lbl) continue;
+      const t = now + sh.n * 1.3;
+      // Point at (r·cos(t), 0, r·sin(t)) then apply ring's own Euler rotations
+      const r   = sh.radius;
+      const lx  = r * Math.cos(t), lz = r * Math.sin(t);
+      const rx  = sh.ring.rotation.x, rz = sh.ring.rotation.z;
+      // Rotate around X by rx
+      const y1  = -lz * Math.sin(rx),  z1 = lz * Math.cos(rx);
+      // Rotate around Z by rz
+      const wx  = lx  * Math.cos(rz) - y1 * Math.sin(rz);
+      const wy  = lx  * Math.sin(rz) + y1 * Math.cos(rz);
+      _tv.set(wx, wy, z1).project(camera);
+
+      if (_tv.z < 1) {
+        sh.lbl.style.left    = ((_tv.x * 0.5 + 0.5) * W) + 'px';
+        sh.lbl.style.top     = ((-_tv.y * 0.5 + 0.5) * H) + 'px';
+        sh.lbl.style.display = '';
+        sh.lbl.style.opacity = '1';
+      } else { sh.lbl.style.display = 'none'; }
+    }
+  }
+
+  // ─── shell panel update ────────────────────────────────────
+
+  _updateShellPanel(n) {
+    const sh  = this.shells.find(s => s.n === n);
+    if (!sh) return;
+    const maxL = n - 1;
+    const cap  = 2 * n * n;
+    const E_eV = (-13.6 / (n * n)).toFixed(3);
+
+    document.getElementById('q-n').textContent      = n;
+    document.getElementById('q-ecount').textContent = sh.electronCount;
+    document.getElementById('q-l').textContent      = maxL === 0 ? '0' : `0 … ${maxL}`;
+    document.getElementById('q-ml').textContent     = maxL === 0 ? '0' : `−${maxL} … +${maxL}`;
+    document.getElementById('q-ms').textContent     = '±½';
+    document.getElementById('q-cap').textContent    = cap;
+    document.getElementById('q-energy').textContent = E_eV + ' eV';
+  }
+
+  _clearShellPanel() {
+    document.getElementById('q-n').textContent      = '—';
+    document.getElementById('q-ecount').textContent = '—';
+    document.getElementById('q-l').textContent      = '—';
+    document.getElementById('q-ml').textContent     = '—';
+    document.getElementById('q-ms').textContent     = '±½';
+    document.getElementById('q-cap').textContent    = '—';
+    document.getElementById('q-energy').textContent = '—';
+  }
+
+  // ─── tear-down ─────────────────────────────────────────────
+
+  _clearAll() {
+    // Remove Three.js objects
+    while (this.root.children.length) {
+      const obj = this.root.children[0];
+      this.root.remove(obj);
+      if (obj.geometry && obj.geometry !== this._eGeo) obj.geometry.dispose();
+      if (obj.material) {
+        if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+        else obj.material.dispose();
+      }
+    }
+    // Remove DOM labels
+    this.domLabels.forEach(el => el.parentNode && el.parentNode.removeChild(el));
+    this.domLabels  = [];
+    this.shells     = [];
+    this.electrons  = [];
+    this.shellMeshes = [];
+    this._selShell  = -1;
+    this._nucleusMesh = null;
+    if (this._nucleusGeo) { this._nucleusGeo.dispose(); this._nucleusGeo = null; }
+  }
+}
+
+// ─── Raycaster for shell clicking ─────────────────────────────
+let bohrAtom = null;
+const _raycaster  = new THREE.Raycaster();
+const _mouse      = new THREE.Vector2();
+let   _zoomedIn   = false;
+
+function onCanvasClick(e) {
+  if (!bohrAtom || !bohrAtom.root.visible) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  _mouse.x = ((e.clientX - rect.left) / rect.width)  * 2 - 1;
+  _mouse.y =-((e.clientY - rect.top)  / rect.height) * 2 + 1;
+  _raycaster.setFromCamera(_mouse, camera);
+  const hits = _raycaster.intersectObjects(bohrAtom.shellMeshes, false);
+  if (hits.length) {
+    const n = hits[0].object.userData.shellN;
+    if (bohrAtom._selShell === n) bohrAtom.clearSelection();
+    else bohrAtom.selectShell(n);
+  } else {
+    bohrAtom.clearSelection();
+  }
+}
+
+function onCanvasDblClick() {
+  if (!bohrAtom) return;
+  if (_zoomedIn) {
+    _zoomedIn = false;
+    snapView(state.get('activeView'));
+  } else {
+    _zoomedIn = true;
+    gsap.to(camera.position, {
+      x: 0.4, y: 0.15, z: 0.6,
+      duration: 1.1, ease: 'power3.inOut',
+      onUpdate: () => controls.update(),
+    });
+    gsap.to(controls.target, {
+      x: 0, y: 0, z: 0,
+      duration: 1.1, ease: 'power3.inOut',
+      onUpdate: () => controls.update(),
+    });
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
 // RENDER LOOP
 // ──────────────────────────────────────────────────────────────
 let fc = 0, fpsT = 0;
@@ -754,10 +1403,12 @@ const fpsEl = document.getElementById('fps-counter');
 function animate() {
   requestAnimationFrame(animate);
   const dt = clock.getDelta();
-  const scaled = dt * animSpeed;
 
   controls.autoRotateSpeed = 0.5 * animSpeed;
   controls.update();
+
+  // Bohr atom animation
+  if (bohrAtom) bohrAtom.animate(dt, camera, renderer.domElement);
 
   // drift particles
   if (particles && particles.visible) {
@@ -768,8 +1419,8 @@ function animate() {
       pa[i*3+1] += pVel[i*3+1] * animSpeed;
       pa[i*3+2] += pVel[i*3+2] * animSpeed;
       const r = Math.hypot(pa[i*3], pa[i*3+1], pa[i*3+2]);
-      if (r > 22) {
-        pa[i*3] *= 0.975; pa[i*3+1] *= 0.975; pa[i*3+2] *= 0.975;
+      if (r > 40) {
+        pa[i*3] *= 0.98; pa[i*3+1] *= 0.98; pa[i*3+2] *= 0.98;
         pVel[i*3] *= -0.6; pVel[i*3+1] *= -0.6; pVel[i*3+2] *= -0.6;
       }
     }
@@ -823,26 +1474,60 @@ function onResize() {
 // ──────────────────────────────────────────────────────────────
 function showElement(el) {
   state.set('element', el.z);
-  document.getElementById('hero-sym').textContent  = el.sym;
-  document.getElementById('hero-name').textContent = el.name;
-  document.getElementById('hero-z').textContent    = `Z = ${el.z}`;
-  document.getElementById('hero-sym').style.color  = el.col;
+
+  // ── Right panel: element hero ──────────────────────────────
+  document.getElementById('hero-sym').textContent        = el.sym;
+  document.getElementById('hero-name').textContent       = el.name;
+  document.getElementById('hero-z').textContent          = `Z = ${el.z}`;
+  document.getElementById('hero-sym').style.color        = el.col;
   document.getElementById('elem-hero').style.borderColor = el.col + '44';
+
+  // ── Atomic data ────────────────────────────────────────────
   document.getElementById('p-z').textContent      = el.z;
   document.getElementById('p-mass').textContent   = el.mass + ' u';
   document.getElementById('p-period').textContent = el.p;
-  document.getElementById('p-group').textContent  = el.g;
+  document.getElementById('p-group').textContent  = el.g || '—';
   document.getElementById('p-block').textContent  = el.b;
-  document.getElementById('p-config').textContent = el.cfg;
+  document.getElementById('p-config').textContent = el.cfg ?? '—';
   document.getElementById('p-en').textContent     = el.en ?? '—';
-  document.getElementById('p-r').textContent      = el.r + ' pm';
-  document.getElementById('p-ie').textContent     = el.ie + ' eV';
-  document.getElementById('p-state').textContent  = el.st;
+  document.getElementById('p-r').textContent      = el.r != null ? el.r + ' pm' : '—';
+  document.getElementById('p-ie').textContent     = el.ie != null ? el.ie + ' eV' : '—';
+  document.getElementById('p-state').textContent  = el.st ?? '—';
   document.getElementById('p-state').style.color  =
     el.st === 'Gas' ? '#60a5fa' : el.st === 'Liquid' ? '#34d399' : '#f9a8d4';
-  document.getElementById('q-n').textContent  = el.p;
-  document.getElementById('q-l').textContent  = el.b === 's' ? 0 : el.b === 'p' ? 1 : el.b === 'd' ? 2 : 3;
+
+  // ── Shell badges ───────────────────────────────────────────
+  const badgesWrap = document.getElementById('shell-badges');
+  badgesWrap.innerHTML = '';
+  el.shells.forEach((cnt, i) => {
+    if (!cnt) return;
+    const n   = i + 1;
+    const hex = '#' + new THREE.Color(SHELL_COLORS[i]).getHexString();
+    const btn = document.createElement('div');
+    btn.className = 'shell-selected-badge';
+    btn.style.cssText = `color:${hex};border-color:${hex}44;background:${hex}14`;
+    btn.innerHTML = `<span style="font-weight:600">${SHELL_NAMES[i]}</span> ${cnt}e⁻`;
+    btn.addEventListener('click', () => {
+      if (bohrAtom) {
+        if (bohrAtom._selShell === n) bohrAtom.clearSelection();
+        else bohrAtom.selectShell(n);
+      }
+    });
+    badgesWrap.appendChild(btn);
+  });
+
+  // Reset quantum panel to no-selection state
+  if (bohrAtom) bohrAtom._clearShellPanel();
+
   document.getElementById('status-text').textContent = `${el.name} (Z=${el.z})`;
+
+  // ── Bohr atom 3-D model ────────────────────────────────────
+  if (bohrAtom && bohrAtom.root.visible) {
+    bohrAtom.transitionTo(el, () => {
+      // After transition, re-fit camera
+      snapView(state.get('activeView'));
+    });
+  }
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -882,8 +1567,12 @@ document.getElementById('elem-search').addEventListener('input', function() {
   const out = document.getElementById('search-results');
   out.innerHTML = '';
   if (!q) return;
-  ELEMENTS.filter(e => e.name.toLowerCase().includes(q) || e.sym.toLowerCase().includes(q))
-    .slice(0, 6).forEach(el => {
+  // Search all 118 elements by name, symbol, or atomic number
+  ELEMENTS.filter(e =>
+    e.name.toLowerCase().includes(q) ||
+    e.sym.toLowerCase().includes(q)  ||
+    String(e.z).startsWith(q)
+  ).slice(0, 8).forEach(el => {
       const d = document.createElement('div');
       d.style.cssText = 'padding:6px 8px;border-radius:5px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:8px;transition:background .15s';
       d.innerHTML = `<span style="font-family:'JetBrains Mono',monospace;color:${el.col};font-size:11px;min-width:20px">${el.sym}</span><span style="color:rgba(232,232,240,.7)">${el.name}</span><span style="margin-left:auto;font-size:10px;color:rgba(232,232,240,.3);font-family:'JetBrains Mono',monospace">${el.z}</span>`;
@@ -957,10 +1646,34 @@ function initUI() {
     item.addEventListener('click', () => {
       document.querySelectorAll('.model-item').forEach(x => x.classList.remove('active'));
       item.classList.add('active');
-      state.set('model', item.dataset.model);
-      router.navigate(`#/model/${item.dataset.model}`);
-      document.getElementById('status-text').textContent = 'Model: ' + item.dataset.model;
+      const modelName = item.dataset.model;
+      state.set('model', modelName);
+      router.navigate(`#/model/${modelName}`);
+      document.getElementById('status-text').textContent = 'Model: ' + modelName;
+
+      // Show/hide bohr atom
+      if (bohrAtom) {
+        const isBohr = modelName === 'bohr';
+        bohrAtom.setVisible(isBohr);
+        document.getElementById('atom-labels').style.display = isBohr ? '' : 'none';
+        if (isBohr) snapView(state.get('activeView'));
+      }
     }));
+
+  // Zoom to nucleus button
+  document.getElementById('btn-zoom-nucleus').addEventListener('click', onCanvasDblClick);
+
+  // de Broglie toggle (button starts active = waves ON)
+  const btnDB = document.getElementById('btn-debroglie');
+  btnDB.addEventListener('click', () => {
+    const isActive = btnDB.classList.toggle('active');
+    if (bohrAtom) bohrAtom.setDeBroglie(isActive);
+    state.set('showDeBroglie', isActive);
+  });
+
+  // Canvas click → shell picking
+  renderer.domElement.addEventListener('click',    onCanvasClick);
+  renderer.domElement.addEventListener('dblclick', onCanvasDblClick);
 
   // bloom
   const rBloom = document.getElementById('r-bloom');
@@ -1075,11 +1788,20 @@ function initKeys() {
       case '2': snapView('top');   break;
       case '3': snapView('side');  break;
       case '4': snapView('iso');   break;
+      case 'n': case 'N':
+        onCanvasDblClick();
+        break;
+      case 'b': case 'B': {
+        const dbBtn = document.getElementById('btn-debroglie');
+        dbBtn.click();
+        break;
+      }
       case '?':
         document.getElementById('shortcuts-overlay').style.display = 'flex';
         break;
       case 'Escape':
         document.getElementById('shortcuts-overlay').style.display = 'none';
+        if (bohrAtom) bohrAtom.clearSelection();
         break;
     }
   });
@@ -1142,11 +1864,25 @@ async function boot() {
   initUI();
   initKeys();
 
+  // ── Bohr atom: init with Hydrogen ─────────────────────────
+  bohrAtom = new BohrAtom(scene, document.getElementById('atom-labels'));
+  const H = ELEMENTS[0]; // Hydrogen
+  bohrAtom.build(H);
+  // Default model = bohr; ensure UI reflects it
+  state.set('model', 'bohr');
+  document.querySelectorAll('.model-item').forEach(x =>
+    x.classList.toggle('active', x.dataset.model === 'bohr'));
+
   router
     .on('model', name => {
       state.set('model', name);
       document.querySelectorAll('.model-item').forEach(x =>
         x.classList.toggle('active', x.dataset.model === name));
+      if (bohrAtom) {
+        const isBohr = name === 'bohr';
+        bohrAtom.setVisible(isBohr);
+        document.getElementById('atom-labels').style.display = isBohr ? '' : 'none';
+      }
     })
     .on('element', z => {
       const el = ELEMENTS.find(e => e.z === z);
@@ -1160,6 +1896,11 @@ async function boot() {
   renderer.toneMappingExposure = state.get('exposure');
   controls.autoRotate = state.get('autoRotate');
 
+  // Show H in panel, build shell badges
+  showElement(H);
+  // Override: make sure Bohr atom is on (showElement's transitionTo skips if already built)
+  bohrAtom.setVisible(true);
+
   animate(); // start render loop
 
   // reveal UI, hide loader
@@ -1171,7 +1912,7 @@ async function boot() {
     onComplete: () => loading.style.display = 'none' });
   gsap.to(ui, { opacity: 1, duration: 0.55, delay: 0.15, ease: 'power2.out' });
 
-  snapView(state.get('activeView') || 'iso');
+  snapView('iso');
 }
 
 boot();
