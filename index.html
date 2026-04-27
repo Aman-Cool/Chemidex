@@ -124,6 +124,20 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#
 /* Nucleus zoom btn */
 #btn-zoom-nucleus{}
 
+/* ── Nuclear View UI ─────────────────────────────────── */
+#nucleon-tooltip{position:fixed;pointer-events:none;z-index:200;display:none;max-width:230px}
+.tip-name{font-size:13px;font-weight:600;margin-bottom:6px}
+.tip-row{display:flex;justify-content:space-between;gap:14px;font-size:11px;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.tip-key{color:rgba(232,232,240,.45)}
+.tip-val{font-family:'JetBrains Mono',monospace;color:#e8e8f0;text-align:right}
+#particle-inspector{position:fixed;right:-340px;top:48px;bottom:52px;width:320px;z-index:100;pointer-events:all;display:flex;flex-direction:column;overflow:hidden;transition:right .35s cubic-bezier(.4,0,.2,1)}
+#particle-inspector.open{right:0}
+#btn-back-to-atom{position:fixed;bottom:62px;left:50%;transform:translateX(-50%);z-index:150;display:none;padding:8px 22px;border-radius:20px;font-size:12px;cursor:pointer;font-family:'JetBrains Mono',monospace;border:1px solid rgba(99,102,241,.5);background:rgba(10,10,18,.9);color:#818cf8;backdrop-filter:blur(10px);transition:all .2s;pointer-events:all;letter-spacing:.5px;white-space:nowrap}
+#btn-back-to-atom:hover{background:rgba(99,102,241,.3);border-color:#6366f1;color:#a5b4fc}
+#zoom-indicator{position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:150;display:none;font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(232,232,240,.5);pointer-events:none;background:rgba(10,10,18,.75);padding:3px 12px;border-radius:10px;backdrop-filter:blur(8px);letter-spacing:1px}
+#nuclear-flash{position:fixed;inset:0;z-index:98;background:#fff;opacity:0;pointer-events:none}
+#binding-chart-wrap{position:fixed;bottom:62px;right:16px;z-index:50;display:none;width:280px}
+
 /* ── Quantum UI ──────────────────────────────────────── */
 .orbital-btn{padding:3px 8px;border-radius:4px;font-size:11px;font-family:'JetBrains Mono',monospace;cursor:pointer;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(232,232,240,.6);transition:all .15s}
 .orbital-btn:hover{background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.3);color:#e8e8f0}
@@ -520,6 +534,49 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#
       <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">?</code><span>This help panel</span>
       <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">Esc</code><span>Close overlays / deselect shell</span>
     </div>
+  </div>
+</div>
+
+<!-- NUCLEON HOVER TOOLTIP -->
+<div id="nucleon-tooltip">
+  <div class="glass" style="padding:10px 12px;border-radius:8px">
+    <div class="tip-name" id="tip-name">Proton</div>
+    <div class="tip-row"><span class="tip-key">Mass</span><span class="tip-val" id="tip-mass">938.272 MeV/c²</span></div>
+    <div class="tip-row"><span class="tip-key">Charge</span><span class="tip-val" id="tip-charge">+1 e</span></div>
+    <div class="tip-row"><span class="tip-key">Spin</span><span class="tip-val" id="tip-spin">1/2</span></div>
+    <div class="tip-row"><span class="tip-key">Quarks</span><span class="tip-val" id="tip-quarks">uud</span></div>
+    <div class="tip-row"><span class="tip-key">Discovered</span><span class="tip-val" id="tip-disc">1917</span></div>
+    <div class="tip-row" style="border:none"><span class="tip-key">By</span><span class="tip-val" id="tip-by" style="font-family:Inter,sans-serif;font-size:10px">E. Rutherford</span></div>
+  </div>
+</div>
+
+<!-- PARTICLE INSPECTOR PANEL -->
+<aside id="particle-inspector" class="glass" style="border-right:none;border-bottom:none;border-top:none">
+  <div style="padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;position:relative">
+    <div style="font-size:10px;font-weight:600;letter-spacing:2px;color:rgba(232,232,240,.35);text-transform:uppercase">Particle Inspector</div>
+    <div id="pi-title" style="font-size:18px;font-weight:700;margin-top:3px;font-family:'JetBrains Mono',monospace;color:#fc8181">Proton</div>
+    <button id="pi-close" class="btn-icon" style="position:absolute;top:10px;right:10px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div id="pi-content" style="padding:14px;overflow-y:auto;flex:1;font-size:12px"></div>
+</aside>
+
+<!-- BACK TO ATOM BUTTON -->
+<button id="btn-back-to-atom">← Back to Atom</button>
+
+<!-- ZOOM INDICATOR -->
+<div id="zoom-indicator">NUCLEAR VIEW &mdash; 100,000× magnification</div>
+
+<!-- NUCLEAR FLASH TRANSITION EFFECT -->
+<div id="nuclear-flash"></div>
+
+<!-- BINDING ENERGY PER NUCLEON CHART -->
+<div id="binding-chart-wrap">
+  <div class="glass" style="border-radius:8px;padding:10px 12px">
+    <div style="font-size:10px;color:rgba(232,232,240,.35);font-family:'JetBrains Mono',monospace;margin-bottom:6px;letter-spacing:1px">BINDING ENERGY PER NUCLEON</div>
+    <div id="binding-chart-svg"></div>
+    <div id="binding-chart-val" style="font-size:11px;font-family:'JetBrains Mono',monospace;color:#f59e0b;margin-top:4px;text-align:center"></div>
   </div>
 </div>
 
@@ -1734,19 +1791,447 @@ class QuantumAtom {
   }
 }
 
+// ──────────────────────────────────────────────────────────────
+// NUCLEAR VIEW — Proton / Neutron / Quark visualization
+// ──────────────────────────────────────────────────────────────
+const NUCLEON_DATA = {
+  p: {
+    name:'Proton', symbol:'p⁺', mass_MeV:938.272046, charge:'+1', spin:'1/2',
+    quarks:'uud', magnetic_moment:'+2.79285 μN', charge_radius:'0.8409 fm',
+    g_factor:'5.58569', isospin:'+1/2', mean_life:'stable (>3.6×10²⁹ yr)',
+    discovered:1917, discoverer:'Ernest Rutherford',
+  },
+  n: {
+    name:'Neutron', symbol:'n⁰', mass_MeV:939.565420, charge:'0', spin:'1/2',
+    quarks:'udd', magnetic_moment:'−1.91304 μN', charge_radius:'−0.116 fm²',
+    g_factor:'−3.82608', isospin:'−1/2', mean_life:'877.75 s (free)',
+    discovered:1932, discoverer:'James Chadwick',
+  },
+};
+
+// Bethe-Weizsäcker semi-empirical mass formula
+function bePerNucleon(Z, A) {
+  if (A < 2) return 0;
+  const N = A - Z;
+  const aV=15.85, aS=18.34, aC=0.711, aA=23.21;
+  const delta = (Z%2===0 && N%2===0) ? 12/Math.sqrt(A) : (Z%2===1 && N%2===1) ? -12/Math.sqrt(A) : 0;
+  const BE = aV*A - aS*Math.pow(A,2/3) - aC*Z*(Z-1)*Math.pow(A,-1/3) - aA*(N-Z)**2/A + delta;
+  return Math.max(0, BE / A);
+}
+
+// Hard-sphere packing with repulsion relaxation
+function packNucleons(Z, A) {
+  const R    = 1.25 * Math.pow(A, 1/3);
+  const dMin = 1.75;
+  const pos  = [];
+  for (let i = 0; i < A; i++) {
+    let p, tries = 0;
+    do {
+      const r  = R * Math.cbrt(Math.random());
+      const ph = Math.random() * Math.PI * 2;
+      const ct = Math.random() * 2 - 1, st = Math.sqrt(1 - ct*ct);
+      p = new THREE.Vector3(r*st*Math.cos(ph), r*st*Math.sin(ph), r*ct);
+      tries++;
+    } while (tries < 50 && pos.some(q => q.distanceTo(p) < dMin*0.82));
+    pos.push(p);
+  }
+  const tmp = new THREE.Vector3();
+  const iters = A < 60 ? 40 : A < 130 ? 25 : 15;
+  for (let it = 0; it < iters; it++) {
+    for (let i = 0; i < A; i++) {
+      tmp.set(0,0,0);
+      for (let j = 0; j < A; j++) {
+        if (i===j) continue;
+        const dx=pos[i].x-pos[j].x, dy=pos[i].y-pos[j].y, dz=pos[i].z-pos[j].z;
+        const d2=dx*dx+dy*dy+dz*dz;
+        if (d2 < dMin*dMin) {
+          const d=Math.sqrt(d2)||0.001;
+          const f=(dMin-d)*0.10/d;
+          tmp.x+=dx*f; tmp.y+=dy*f; tmp.z+=dz*f;
+        }
+      }
+      pos[i].add(tmp);
+      if (pos[i].length() > R*1.12) pos[i].setLength(R*1.12);
+    }
+  }
+  return pos;
+}
+
+class NucleusView {
+  constructor(scene, camera, controls) {
+    this.scene    = scene;
+    this.camera   = camera;
+    this.controls = controls;
+    this.root     = new THREE.Group();
+    scene.add(this.root);
+    this.root.visible = false;
+
+    this._active     = false;
+    this._element    = null;
+    this._prevModel  = null;
+    this._A = 0; this._Z = 0; this._R = 0;
+
+    this._protonIM   = null;
+    this._neutronIM  = null;
+    this._forceLines = null;
+    this._stGrid     = null;
+    this._quarkGroup = null;
+
+    this._nucleonPos  = [];
+    this._nucleonType = [];
+    this._protonIdx   = [];
+    this._neutronIdx  = [];
+
+    this._hovType  = null; this._hovInst  = -1;
+    this._lockType = null; this._lockInst = -1;
+
+    this._nucleonGeo = new THREE.SphereGeometry(0.82, 20, 14);
+    this._quarkGeo   = new THREE.SphereGeometry(0.24, 12, 8);
+    this._dummy      = new THREE.Object3D();
+
+    this._pMat = new THREE.MeshStandardMaterial({ color:0xe53e3e, emissive:0x881111, emissiveIntensity:0.65, roughness:0.28, metalness:0.05 });
+    this._nMat = new THREE.MeshStandardMaterial({ color:0x3182ce, emissive:0x112266, emissiveIntensity:0.65, roughness:0.28, metalness:0.05 });
+  }
+
+  enter(element) {
+    this._element  = element;
+    this._prevModel = state.get('model');
+    this._Z = element.z;
+    this._A = Math.max(Math.round(element.mass) || element.z*2, element.z);
+
+    this._clear();
+    this._build();
+    this.root.visible = true;
+    this._active = true;
+
+    // Flash transition
+    const flash = document.getElementById('nuclear-flash');
+    gsap.fromTo(flash, { opacity:0 }, { opacity:0.75, duration:0.18, ease:'power2.in',
+      onComplete: () => gsap.to(flash, { opacity:0, duration:0.30, ease:'power2.out' })
+    });
+
+    // Camera zoom to nuclear scale
+    const td = Math.max(this._R * 2.8, 9);
+    gsap.to(this.camera.position, { x:td*0.12, y:td*0.38, z:td, duration:1.25, ease:'power3.inOut', onUpdate:()=>this.controls.update() });
+    gsap.to(this.controls.target,  { x:0, y:0, z:0, duration:1.25, ease:'power3.inOut', onUpdate:()=>this.controls.update() });
+
+    document.getElementById('btn-back-to-atom').style.display = 'block';
+    document.getElementById('zoom-indicator').style.display   = 'block';
+    this._showBindingChart();
+    document.getElementById('status-text').textContent = `Nuclear View — ${element.name} (A=${this._A})`;
+  }
+
+  exit() {
+    this._active = false;
+    this._clearQuarks();
+    this._closeInspector();
+
+    gsap.to(this.root.position, { duration:0.3, onComplete: () => { this.root.visible=false; this._clear(); } });
+    document.getElementById('btn-back-to-atom').style.display   = 'none';
+    document.getElementById('zoom-indicator').style.display     = 'none';
+    document.getElementById('binding-chart-wrap').style.display = 'none';
+    document.getElementById('nucleon-tooltip').style.display    = 'none';
+
+    const prev = this._prevModel;
+    if (prev === 'bohr' && bohrAtom) {
+      bohrAtom.setVisible(true);
+      document.getElementById('atom-labels').style.display = '';
+    } else if (prev === 'quantum' && quantumAtom) {
+      quantumAtom.setVisible(true);
+      document.getElementById('eq-overlay').style.display = 'block';
+    }
+    snapView(state.get('activeView'));
+    document.getElementById('status-text').textContent = `${this._element?.name ?? ''} (Z=${this._Z})`;
+  }
+
+  _build() {
+    this._R = 1.25 * Math.pow(this._A, 1/3);
+    this._nucleonPos  = packNucleons(this._Z, this._A);
+    this._nucleonType = [];
+    this._protonIdx   = [];
+    this._neutronIdx  = [];
+
+    let pi=0, ni=0;
+    for (let i = 0; i < this._A; i++) {
+      if (i < this._Z) { this._nucleonType.push('p'); this._protonIdx.push(i); pi++; }
+      else             { this._nucleonType.push('n'); this._neutronIdx.push(i); ni++; }
+    }
+
+    const Z = this._Z, N = this._A - this._Z;
+    this._protonIM  = new THREE.InstancedMesh(this._nucleonGeo, this._pMat, Math.max(Z,1));
+    this._neutronIM = new THREE.InstancedMesh(this._nucleonGeo, this._nMat, Math.max(N,1));
+    this._protonIM.count  = Z;
+    this._neutronIM.count = N;
+
+    pi=0; ni=0;
+    for (let i = 0; i < this._A; i++) {
+      this._dummy.position.copy(this._nucleonPos[i]);
+      this._dummy.scale.setScalar(1);
+      this._dummy.updateMatrix();
+      if (this._nucleonType[i]==='p') this._protonIM.setMatrixAt(pi++, this._dummy.matrix);
+      else                            this._neutronIM.setMatrixAt(ni++, this._dummy.matrix);
+    }
+    this._protonIM.instanceMatrix.needsUpdate  = true;
+    this._neutronIM.instanceMatrix.needsUpdate = true;
+
+    this.root.add(this._protonIM, this._neutronIM);
+    this._buildForceLines();
+    this._buildSpacetimeGrid();
+
+    const nLight = new THREE.PointLight(0xff8844, 2.5, this._R*4);
+    nLight.name = 'nucleusLight';
+    this.root.add(nLight);
+  }
+
+  _buildForceLines() {
+    const verts = [], maxN=5, maxD=2.85;
+    for (let i=0; i<this._A; i++) {
+      const nb=[];
+      for (let j=i+1; j<this._A; j++) {
+        const d=this._nucleonPos[i].distanceTo(this._nucleonPos[j]);
+        if (d < maxD) nb.push({j,d});
+      }
+      nb.sort((a,b)=>a.d-b.d);
+      for (let k=0; k<Math.min(maxN, nb.length); k++) {
+        const a=this._nucleonPos[i], b=this._nucleonPos[nb[k].j];
+        verts.push(a.x,a.y,a.z, b.x,b.y,b.z);
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(verts),3));
+    const mat = new THREE.LineBasicMaterial({ color:0xff9933, transparent:true, opacity:0.22, depthWrite:false, blending:THREE.AdditiveBlending });
+    this._forceLines = new THREE.LineSegments(geo, mat);
+    this.root.add(this._forceLines);
+  }
+
+  _buildSpacetimeGrid() {
+    const sz = this._R*5+14;
+    const geo = new THREE.PlaneGeometry(sz*2, sz*2, 38, 38);
+    const pos = geo.attributes.position;
+    for (let i=0; i<pos.count; i++) {
+      const x=pos.getX(i), z=pos.getZ(i), r=Math.sqrt(x*x+z*z);
+      pos.setY(i, pos.getY(i) - Math.min(4.8/(r*0.16+0.32), 4.8));
+    }
+    pos.needsUpdate=true;
+    geo.rotateX(-Math.PI/2);
+    const mat = new THREE.MeshBasicMaterial({ color:0x1a2a44, wireframe:true, transparent:true, opacity:0.18 });
+    this._stGrid = new THREE.Mesh(geo, mat);
+    this._stGrid.position.y = -(this._R+4);
+    this.root.add(this._stGrid);
+  }
+
+  hover(type, instId) {
+    if (type===this._hovType && instId===this._hovInst) return;
+    this._hovType=type; this._hovInst=instId;
+    this._clearQuarks();
+    if (!type) return;
+    const globalIdx = type==='p' ? this._protonIdx[instId] : this._neutronIdx[instId];
+    if (globalIdx!==undefined) this._showQuarks(globalIdx, type);
+  }
+
+  _showQuarks(globalIdx, type) {
+    const pos = this._nucleonPos[globalIdx];
+    const qDef = type==='p'
+      ? [{t:'u',c:0xff4444},{t:'u',c:0xff9933},{t:'d',c:0x4488ff}]
+      : [{t:'u',c:0xff4444},{t:'d',c:0x4488ff},{t:'d',c:0x2266cc}];
+    const qColCharge = [0xff2200, 0x00ee44, 0x0088ff];
+
+    this._quarkGroup = new THREE.Group();
+    this._quarkGroup.position.copy(pos);
+    const qPos=[];
+
+    qDef.forEach((q,i) => {
+      const a=(i/3)*Math.PI*2;
+      const qp = new THREE.Vector3(Math.cos(a)*0.3, 0, Math.sin(a)*0.3);
+      qPos.push(qp);
+      const mat = new THREE.MeshStandardMaterial({ color:q.c, emissive:q.c, emissiveIntensity:2.5, transparent:true, opacity:0, roughness:0.1 });
+      const mesh = new THREE.Mesh(this._quarkGeo, mat);
+      mesh.position.copy(qp);
+      gsap.to(mat, { opacity:0.9, duration:0.28, delay:i*0.07 });
+
+      // Color charge glow ring
+      const ringGeo = new THREE.TorusGeometry(0.11, 0.022, 4, 18);
+      const ringMat = new THREE.MeshBasicMaterial({ color:qColCharge[i], transparent:true, opacity:0, blending:THREE.AdditiveBlending });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.copy(qp); ring.rotation.x = Math.PI/2;
+      gsap.to(ringMat, { opacity:0.75, duration:0.28, delay:i*0.07+0.1 });
+      this._quarkGroup.add(ring, mesh);
+    });
+
+    // Gluon lines (triangle)
+    for (let i=0; i<3; i++) {
+      const j=(i+1)%3;
+      const gv=new Float32Array([qPos[i].x,qPos[i].y,qPos[i].z, qPos[j].x,qPos[j].y,qPos[j].z]);
+      const gg=new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.BufferAttribute(gv,3));
+      const gm=new THREE.LineBasicMaterial({ color:0xffdd44, transparent:true, opacity:0, blending:THREE.AdditiveBlending });
+      const gl=new THREE.LineSegments(gg,gm);
+      gsap.to(gm, { opacity:0.55, duration:0.28, delay:0.18 });
+      this._quarkGroup.add(gl);
+    }
+    this.root.add(this._quarkGroup);
+  }
+
+  _clearQuarks() {
+    if (!this._quarkGroup) return;
+    this._quarkGroup.traverse(o => { if(o.geometry) o.geometry.dispose(); if(o.material) o.material.dispose(); });
+    this.root.remove(this._quarkGroup);
+    this._quarkGroup=null;
+  }
+
+  lockToNucleon(type, instId) {
+    this._lockType=type; this._lockInst=instId;
+    const gi = type==='p' ? this._protonIdx[instId] : this._neutronIdx[instId];
+    if (gi===undefined) return;
+    const pos = this._nucleonPos[gi];
+    gsap.to(this.controls.target, { x:pos.x, y:pos.y, z:pos.z, duration:0.6, ease:'power2.inOut', onUpdate:()=>this.controls.update() });
+    this._openInspector(NUCLEON_DATA[type], type);
+  }
+
+  _openInspector(data, type) {
+    const pi=document.getElementById('particle-inspector');
+    const title=document.getElementById('pi-title');
+    const content=document.getElementById('pi-content');
+    if (!pi||!title||!content) return;
+    title.textContent = data.name;
+    title.style.color = type==='p' ? '#fc8181' : '#76b4fb';
+    const N=this._A-this._Z;
+    const rows = [
+      ['Symbol',data.symbol],['Rest mass',data.mass_MeV+' MeV/c²'],['Charge',data.charge+' e'],
+      ['Spin',data.spin+' ℏ'],['Quark content',data.quarks],['Magnetic moment',data.magnetic_moment],
+      ['Charge radius',data.charge_radius],['g-factor',data.g_factor],['Isospin',data.isospin],
+      ['Mean lifetime',data.mean_life],['Discovered',data.discovered],['Discoverer',data.discoverer],
+    ];
+    content.innerHTML = `
+      <div style="font-size:10px;color:rgba(232,232,240,.35);letter-spacing:1px;margin-bottom:6px;font-family:'JetBrains Mono',monospace">CODATA 2018</div>
+      ${rows.map(([k,v])=>`<div class="prop-row"><span class="prop-label">${k}</span><span class="prop-value" style="font-size:11px;max-width:140px;text-align:right">${v}</span></div>`).join('')}
+      <div style="height:1px;background:rgba(255,255,255,.06);margin:10px 0"></div>
+      <div style="font-size:10px;color:rgba(232,232,240,.35);letter-spacing:1px;margin-bottom:6px;font-family:'JetBrains Mono',monospace">NUCLEAR CONTEXT</div>
+      <div class="prop-row"><span class="prop-label">Element</span><span class="prop-value">${this._element.name}</span></div>
+      <div class="prop-row"><span class="prop-label">Z / N</span><span class="prop-value">${this._Z} / ${N}</span></div>
+      <div class="prop-row"><span class="prop-label">A (mass no.)</span><span class="prop-value">${this._A}</span></div>
+      <div class="prop-row"><span class="prop-label">BE/nucleon</span><span class="prop-value">${bePerNucleon(this._Z,this._A).toFixed(3)} MeV</span></div>
+      <div class="prop-row"><span class="prop-label">Nuclear radius</span><span class="prop-value">${this._R.toFixed(2)} fm</span></div>
+      <div style="height:1px;background:rgba(255,255,255,.06);margin:10px 0"></div>
+      <div style="font-size:10px;color:rgba(232,232,240,.35);letter-spacing:1px;margin-bottom:6px;font-family:'JetBrains Mono',monospace">RELATED CONCEPTS</div>
+      <div style="font-size:11px;color:rgba(232,232,240,.4);line-height:1.9">Strong nuclear force &middot; Yukawa potential &middot; Isospin symmetry &middot; Color confinement &middot; Asymptotic freedom &middot; QCD &middot; Nuclear shell model</div>`;
+    pi.classList.add('open');
+  }
+
+  _closeInspector() {
+    document.getElementById('particle-inspector')?.classList.remove('open');
+    this._lockType=null; this._lockInst=-1;
+  }
+
+  _showBindingChart() {
+    const el=this._element, Z=this._Z, A=this._A;
+    const svgWrap=document.getElementById('binding-chart-svg');
+    const valEl=document.getElementById('binding-chart-val');
+    const wrap=document.getElementById('binding-chart-wrap');
+    if (!svgWrap||!wrap) return;
+    const W=256,H=118,PL=28,PR=6,PT=5,PB=22;
+    const pts=[];
+    for (let a=2;a<=250;a++) { const z=Math.max(1,Math.round(a*0.43)); pts.push({a,be:bePerNucleon(z,a)}); }
+    const sx=a=>PL+((a-2)/248)*(W-PL-PR);
+    const sy=b=>H-PB-(b/9.0)*(H-PT-PB);
+    let path=`M ${sx(pts[0].a).toFixed(1)} ${sy(pts[0].be).toFixed(1)}`;
+    for (let i=1;i<pts.length;i++) path+=` L ${sx(pts[i].a).toFixed(1)} ${sy(pts[i].be).toFixed(1)}`;
+    const cx=sx(Math.min(A,250)).toFixed(1), cy=sy(bePerNucleon(Z,A)).toFixed(1);
+    const fex=sx(56).toFixed(1), fey=sy(bePerNucleon(26,56)).toFixed(1);
+    const ticks=[2,50,100,150,200,250].map(a=>`<text x="${sx(a).toFixed(1)}" y="${H-5}" fill="rgba(255,255,255,.3)" font-size="7" text-anchor="middle" font-family="monospace">${a}</text>`).join('');
+    svgWrap.innerHTML=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+      <line x1="${PL}" y1="${H-PB}" x2="${W-PR}" y2="${H-PB}" stroke="rgba(255,255,255,.15)" stroke-width="1"/>
+      <line x1="${PL}" y1="${PT}" x2="${PL}" y2="${H-PB}" stroke="rgba(255,255,255,.15)" stroke-width="1"/>
+      ${ticks}
+      <text x="8" y="${sy(9)}" fill="rgba(255,255,255,.3)" font-size="7" font-family="monospace">9</text>
+      <text x="8" y="${sy(0)+4}" fill="rgba(255,255,255,.3)" font-size="7" font-family="monospace">0</text>
+      <path d="${path}" fill="none" stroke="#6366f1" stroke-width="1.5" opacity="0.85"/>
+      <circle cx="${fex}" cy="${fey}" r="2.5" fill="none" stroke="#6366f1" stroke-width="1"/>
+      <text x="${(+fex+3).toFixed(1)}" y="${(+fey-3).toFixed(1)}" fill="rgba(99,102,241,.8)" font-size="7" font-family="monospace">⁵⁶Fe</text>
+      <circle cx="${cx}" cy="${cy}" r="4.5" fill="#f59e0b" stroke="#fbbf24" stroke-width="1.5" opacity="0.9"/>
+      <text x="${(+cx+6).toFixed(1)}" y="${(+cy+3).toFixed(1)}" fill="#fbbf24" font-size="8" font-family="monospace">${el.sym}</text>
+    </svg>`;
+    if (valEl) valEl.textContent=`${el.sym}-${A}: ${bePerNucleon(Z,A).toFixed(3)} MeV/nucleon`;
+    wrap.style.display='block';
+  }
+
+  showTooltip(type, e) {
+    const t=document.getElementById('nucleon-tooltip'); if (!t) return;
+    const d=NUCLEON_DATA[type];
+    document.getElementById('tip-name').textContent  = d.name;
+    document.getElementById('tip-name').style.color  = type==='p' ? '#fc8181' : '#76b4fb';
+    document.getElementById('tip-mass').textContent  = d.mass_MeV+' MeV/c²';
+    document.getElementById('tip-charge').textContent= d.charge+' e';
+    document.getElementById('tip-spin').textContent  = d.spin;
+    document.getElementById('tip-quarks').textContent= d.quarks;
+    document.getElementById('tip-disc').textContent  = d.discovered;
+    document.getElementById('tip-by').textContent    = d.discoverer;
+    t.style.display='block';
+    t.style.left=(e.clientX+16)+'px';
+    t.style.top =(e.clientY-20)+'px';
+  }
+
+  hideTooltip() { const t=document.getElementById('nucleon-tooltip'); if(t) t.style.display='none'; }
+
+  animate(dt) {
+    if (!this._active) return;
+    if (this._forceLines) this._forceLines.material.opacity = 0.14 + 0.10*Math.sin(performance.now()*0.0018);
+    if (this._quarkGroup) this._quarkGroup.rotation.y += dt*1.3;
+  }
+
+  get active() { return this._active; }
+
+  _clear() {
+    const keep = new Set([this._nucleonGeo, this._quarkGeo]);
+    const keepM = new Set([this._pMat, this._nMat]);
+    while (this.root.children.length) {
+      const obj = this.root.children[0];
+      this.root.remove(obj);
+      obj.traverse(c => {
+        if (c.geometry && !keep.has(c.geometry))  c.geometry.dispose();
+        if (c.material && !keepM.has(c.material)) {
+          if (Array.isArray(c.material)) c.material.forEach(m=>m.dispose()); else c.material.dispose();
+        }
+      });
+    }
+    this._protonIM=null; this._neutronIM=null; this._forceLines=null; this._stGrid=null; this._quarkGroup=null;
+  }
+
+  dispose() {
+    this._clear();
+    this._nucleonGeo.dispose(); this._quarkGeo.dispose();
+    this._pMat.dispose(); this._nMat.dispose();
+    this.scene.remove(this.root);
+  }
+}
+
 // ─── Raycaster for shell clicking ─────────────────────────────
 let bohrAtom    = null;
 let quantumAtom = null;
+let nucleusView = null;
 const _raycaster  = new THREE.Raycaster();
 const _mouse      = new THREE.Vector2();
 let   _zoomedIn   = false;
 
 function onCanvasClick(e) {
-  if (!bohrAtom || !bohrAtom.root.visible) return;
   const rect = renderer.domElement.getBoundingClientRect();
   _mouse.x = ((e.clientX - rect.left) / rect.width)  * 2 - 1;
   _mouse.y =-((e.clientY - rect.top)  / rect.height) * 2 + 1;
   _raycaster.setFromCamera(_mouse, camera);
+
+  if (nucleusView && nucleusView.active) {
+    const targets = [];
+    if (nucleusView._protonIM)  targets.push(nucleusView._protonIM);
+    if (nucleusView._neutronIM) targets.push(nucleusView._neutronIM);
+    const hits = _raycaster.intersectObjects(targets, false);
+    if (hits.length) {
+      const h    = hits[0];
+      const type = h.object === nucleusView._protonIM ? 'p' : 'n';
+      nucleusView.lockToNucleon(type, h.instanceId);
+    }
+    return;
+  }
+
+  if (!bohrAtom || !bohrAtom.root.visible) return;
   const hits = _raycaster.intersectObjects(bohrAtom.shellMeshes, false);
   if (hits.length) {
     const n = hits[0].object.userData.shellN;
@@ -1758,6 +2243,7 @@ function onCanvasClick(e) {
 }
 
 function onCanvasDblClick() {
+  if (nucleusView && nucleusView.active) return;
   if (!bohrAtom) return;
   if (_zoomedIn) {
     _zoomedIn = false;
@@ -1793,6 +2279,7 @@ function animate() {
   // Atom model animation
   if (bohrAtom    && bohrAtom.root.visible)    bohrAtom.animate(dt, camera, renderer.domElement);
   if (quantumAtom && quantumAtom.root.visible) quantumAtom.animate(dt, camera);
+  if (nucleusView && nucleusView.active)        nucleusView.animate(dt);
 
   // drift particles
   if (particles && particles.visible) {
@@ -2055,8 +2542,53 @@ function initUI() {
       }
     }));
 
-  // Zoom to nucleus button
-  document.getElementById('btn-zoom-nucleus').addEventListener('click', onCanvasDblClick);
+  // Zoom to nucleus button — enters/exits NucleusView
+  document.getElementById('btn-zoom-nucleus').addEventListener('click', () => {
+    if (nucleusView && nucleusView.active) { nucleusView.exit(); return; }
+    const z  = state.get('element') || 1;
+    const el = ELEMENTS.find(e => e.z === z) || ELEMENTS[0];
+    if (bohrAtom)    bohrAtom.setVisible(false);
+    if (quantumAtom) quantumAtom.setVisible(false);
+    document.getElementById('atom-labels').style.display = 'none';
+    document.getElementById('eq-overlay').style.display  = 'none';
+    nucleusView.enter(el);
+  });
+
+  // Back to atom button
+  document.getElementById('btn-back-to-atom').addEventListener('click', () => {
+    if (nucleusView) nucleusView.exit();
+  });
+
+  // Particle inspector close button
+  document.getElementById('pi-close').addEventListener('click', () => {
+    if (nucleusView) nucleusView._closeInspector();
+  });
+
+  // Throttled mousemove — nucleon hover detection
+  let _hoverThrottle = 0;
+  renderer.domElement.addEventListener('mousemove', e => {
+    if (!nucleusView || !nucleusView.active) { nucleusView?.hideTooltip(); return; }
+    const now = performance.now();
+    if (now - _hoverThrottle < 40) return;
+    _hoverThrottle = now;
+    const rect = renderer.domElement.getBoundingClientRect();
+    _mouse.x = ((e.clientX - rect.left) / rect.width)  * 2 - 1;
+    _mouse.y =-((e.clientY - rect.top)  / rect.height) * 2 + 1;
+    _raycaster.setFromCamera(_mouse, camera);
+    const targets = [];
+    if (nucleusView._protonIM)  targets.push(nucleusView._protonIM);
+    if (nucleusView._neutronIM) targets.push(nucleusView._neutronIM);
+    const hits = _raycaster.intersectObjects(targets, false);
+    if (hits.length) {
+      const h    = hits[0];
+      const type = h.object === nucleusView._protonIM ? 'p' : 'n';
+      nucleusView.hover(type, h.instanceId);
+      nucleusView.showTooltip(type, e);
+    } else {
+      nucleusView.hover(null, -1);
+      nucleusView.hideTooltip();
+    }
+  });
 
   // de Broglie toggle (button starts active = waves ON)
   const btnDB = document.getElementById('btn-debroglie');
@@ -2362,9 +2894,20 @@ function initKeys() {
       case '2': snapView('top');   break;
       case '3': snapView('side');  break;
       case '4': snapView('iso');   break;
-      case 'n': case 'N':
-        onCanvasDblClick();
+      case 'n': case 'N': {
+        if (nucleusView && nucleusView.active) {
+          nucleusView.exit();
+        } else if (nucleusView) {
+          const z  = state.get('element') || 1;
+          const el = ELEMENTS.find(e => e.z === z) || ELEMENTS[0];
+          if (bohrAtom)    bohrAtom.setVisible(false);
+          if (quantumAtom) quantumAtom.setVisible(false);
+          document.getElementById('atom-labels').style.display = 'none';
+          document.getElementById('eq-overlay').style.display  = 'none';
+          nucleusView.enter(el);
+        }
         break;
+      }
       case 'b': case 'B': {
         const dbBtn = document.getElementById('btn-debroglie');
         dbBtn.click();
@@ -2461,6 +3004,9 @@ async function boot() {
 
   // Init quantum UI panel (needs quantumAtom to exist)
   initQuantumUI();
+
+  // Init nucleus view
+  nucleusView = new NucleusView(scene, camera, controls);
 
   if (startQuantum) {
     // Switch right panel to Quantum tab
