@@ -9,6 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <script>
 tailwind.config = {
   darkMode: 'class',
@@ -121,6 +123,16 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#
 #btn-debroglie.active{background:rgba(251,191,36,.2);color:#fbbf24}
 /* Nucleus zoom btn */
 #btn-zoom-nucleus{}
+
+/* ── Quantum UI ──────────────────────────────────────── */
+.orbital-btn{padding:3px 8px;border-radius:4px;font-size:11px;font-family:'JetBrains Mono',monospace;cursor:pointer;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(232,232,240,.6);transition:all .15s}
+.orbital-btn:hover{background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.3);color:#e8e8f0}
+.orbital-btn.active{background:rgba(99,102,241,.3);border-color:#6366f1;color:#818cf8}
+#measure-btn{width:100%;padding:9px;border-radius:6px;background:linear-gradient(135deg,rgba(99,102,241,.2),rgba(139,92,246,.2));border:1px solid rgba(99,102,241,.35);color:#818cf8;font-size:12px;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif;letter-spacing:.3px}
+#measure-btn:hover{background:linear-gradient(135deg,rgba(99,102,241,.35),rgba(139,92,246,.35));border-color:#6366f1}
+#measure-btn:active{transform:scale(.98)}
+#eq-overlay{position:fixed;bottom:62px;left:50%;transform:translateX(-50%);z-index:20;pointer-events:none;text-align:center;white-space:nowrap}
+.katex{font-size:1em!important}
 </style>
 </head>
 <body class="dark">
@@ -258,6 +270,7 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#
       <div style="display:flex;gap:2px;margin-bottom:-1px">
         <div class="tab-item active" data-panel="element" style="font-size:11px;padding:5px 10px">Element</div>
         <div class="tab-item" data-panel="scene" style="font-size:11px;padding:5px 10px">Scene</div>
+        <div class="tab-item" data-panel="quantum" style="font-size:11px;padding:5px 10px">Quantum</div>
       </div>
     </div>
 
@@ -344,6 +357,77 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#
         <label style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:rgba(232,232,240,.6);cursor:pointer">Fog<input type="checkbox" id="t-fog" checked style="accent-color:#6366f1;width:14px;height:14px"></label>
       </div>
     </div>
+
+    <!-- ── Quantum Panel ─────────────────────────────────────── -->
+    <div id="panel-quantum" style="padding:14px;overflow-y:auto;flex:1;display:none">
+
+      <div style="font-size:10px;color:rgba(232,232,240,.28);font-family:'JetBrains Mono',monospace;margin-bottom:10px;letter-spacing:1px">ORBITAL SELECTOR</div>
+
+      <div style="margin-bottom:8px">
+        <div style="font-size:11px;color:rgba(232,232,240,.4);margin-bottom:5px">Principal (n)</div>
+        <div id="q-n-btns" style="display:flex;gap:3px;flex-wrap:wrap">
+          <button class="orbital-btn active" data-qn="1">n=1</button>
+          <button class="orbital-btn" data-qn="2">n=2</button>
+          <button class="orbital-btn" data-qn="3">n=3</button>
+          <button class="orbital-btn" data-qn="4">n=4</button>
+        </div>
+      </div>
+
+      <div style="margin-bottom:8px">
+        <div style="font-size:11px;color:rgba(232,232,240,.4);margin-bottom:5px">Angular (l)</div>
+        <div id="q-l-btns" style="display:flex;gap:3px;flex-wrap:wrap"></div>
+      </div>
+
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;color:rgba(232,232,240,.4);margin-bottom:5px">Magnetic (mₗ)</div>
+        <div id="q-m-btns" style="display:flex;gap:3px;flex-wrap:wrap"></div>
+      </div>
+
+      <div style="background:rgba(99,102,241,.09);border:1px solid rgba(99,102,241,.2);border-radius:6px;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+        <span id="q-orbital-name" style="color:#818cf8;font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700">1s</span>
+        <span style="font-size:11px;font-family:'JetBrains Mono',monospace"><span style="color:rgba(232,232,240,.4)">E = </span><span id="q-orbital-energy" style="color:#e8e8f0">−13.60 eV</span></span>
+      </div>
+
+      <div style="margin-bottom:10px">
+        <div style="font-size:10px;color:rgba(232,232,240,.28);font-family:'JetBrains Mono',monospace;margin-bottom:6px;letter-spacing:1px">COLORMAP</div>
+        <div style="display:flex;gap:4px">
+          <button class="orbital-btn active" id="cm-viridis" style="flex:1">Viridis</button>
+          <button class="orbital-btn" id="cm-plasma" style="flex:1">Plasma</button>
+          <button class="orbital-btn" id="cm-magma" style="flex:1">Magma</button>
+        </div>
+      </div>
+
+      <div style="height:1px;background:rgba(255,255,255,.06);margin:10px 0"></div>
+
+      <div style="font-size:10px;color:rgba(232,232,240,.28);font-family:'JetBrains Mono',monospace;margin-bottom:8px;letter-spacing:1px">SUPERPOSITION</div>
+
+      <label style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:rgba(232,232,240,.6);cursor:pointer;padding-bottom:8px">
+        Enable Ψ₁ + Ψ₂ superposition
+        <input type="checkbox" id="q-super-toggle" style="accent-color:#6366f1;width:14px;height:14px">
+      </label>
+
+      <div id="q-super-controls" style="display:none;padding:8px;background:rgba(99,102,241,.06);border-radius:6px;border:1px solid rgba(99,102,241,.15);margin-bottom:8px">
+        <div style="font-size:11px;color:rgba(232,232,240,.4);margin-bottom:5px">Second orbital ψ₂ (n₂)</div>
+        <div id="q-n2-btns" style="display:flex;gap:3px;margin-bottom:5px">
+          <button class="orbital-btn" data-qn2="1">1</button>
+          <button class="orbital-btn active" data-qn2="2">2</button>
+          <button class="orbital-btn" data-qn2="3">3</button>
+          <button class="orbital-btn" data-qn2="4">4</button>
+        </div>
+        <div id="q-l2-btns" style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px"></div>
+        <div style="font-size:11px;color:rgba(232,232,240,.4);margin-bottom:3px">Mixing |c₁|² = <span id="v-c1">50</span>%</div>
+        <input type="range" id="q-c1-range" min="0" max="100" value="50" style="width:100%;accent-color:#6366f1">
+        <div style="font-size:10px;color:rgba(232,232,240,.28);font-style:italic;margin-top:4px">Time evolution: e<sup>−iEt/ℏ</sup></div>
+      </div>
+
+      <button id="measure-btn">⚡ Collapse Wavefunction</button>
+
+      <div style="height:1px;background:rgba(255,255,255,.06);margin:12px 0"></div>
+
+      <div style="font-size:10px;color:rgba(232,232,240,.28);font-family:'JetBrains Mono',monospace;margin-bottom:8px;letter-spacing:1px">ENERGY LEVELS</div>
+      <div id="energy-diagram"></div>
+    </div>
+
   </aside>
 
   <!-- BOTTOM CONTROLS -->
@@ -436,6 +520,14 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#
       <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">?</code><span>This help panel</span>
       <code style="font-family:'JetBrains Mono',monospace;color:rgba(232,232,240,.45);font-size:11px">Esc</code><span>Close overlays / deselect shell</span>
     </div>
+  </div>
+</div>
+
+<!-- SCHRÖDINGER EQUATION OVERLAY -->
+<div id="eq-overlay" style="display:none">
+  <div class="glass" style="display:inline-block;padding:8px 18px;border-radius:8px">
+    <div id="eq-katex-render" style="color:#e8e8f0"></div>
+    <div id="eq-orbital-label" style="font-size:10px;color:rgba(232,232,240,.35);font-family:'JetBrains Mono',monospace;margin-top:3px;text-align:center"></div>
   </div>
 </div>
 
@@ -914,7 +1006,9 @@ function snapView(name) {
     b.classList.toggle('active', b.dataset.view === name));
 
   // Scale camera distance to fit the current atom
-  const outerR  = bohrAtom ? bohrAtom.getOuterRadius() : 5;
+  let outerR = 5;
+  if (bohrAtom    && bohrAtom.root.visible)    outerR = bohrAtom.getOuterRadius();
+  else if (quantumAtom && quantumAtom.root.visible) outerR = quantumAtom.getOuterRadius();
   const tarDist  = Math.max(outerR * 2.6, 3.2);
   const [px,py,pz] = v.p;
   const baseLen  = Math.sqrt(px*px + py*py + pz*pz);
@@ -1352,8 +1446,297 @@ class BohrAtom {
   }
 }
 
+// ──────────────────────────────────────────────────────────────
+// QUANTUM ATOM — GLSL Volumetric Wavefunction Rendering
+// ──────────────────────────────────────────────────────────────
+const BOHR_SCALE_Q = 0.40; // scene units per Bohr radius (a₀)
+
+function qBoxHalf(n) {
+  return [4, 12, 22, 35][n - 1] * BOHR_SCALE_Q;
+}
+
+const DENSITY_SCALE_MAP = {
+  '1,0': 1.8,
+  '2,0': 0.55, '2,1': 0.55,
+  '3,0': 0.12, '3,1': 0.12, '3,2': 0.20,
+  '4,0': 0.030, '4,1': 0.030, '4,2': 0.048, '4,3': 0.065,
+};
+
+const SUBSHELL_NAMES = ['s','p','d','f'];
+const ORBITAL_NAMES_FULL = {
+  '1,0': '1s', '2,0': '2s', '2,1': '2p',
+  '3,0': '3s', '3,1': '3p', '3,2': '3d',
+  '4,0': '4s', '4,1': '4p', '4,2': '4d', '4,3': '4f',
+};
+
+const QUANTUM_VERT = `
+varying vec3 vWorldPos;
+void main() {
+  vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+
+const QUANTUM_FRAG = `
+precision highp float;
+precision highp int;
+varying vec3 vWorldPos;
+uniform vec3  uCamPos;
+uniform float uBoxHalf;
+uniform float uBohrScale;
+uniform int   uN, uL, uM;
+uniform float uDensityScale;
+uniform float uTime;
+uniform int   uColormap;
+uniform bool  uSuperpose;
+uniform int   uN2, uL2, uM2;
+uniform float uC1, uC2;
+
+vec3 viridis(float t){
+  t=clamp(t,0.,1.);
+  if(t<.25) return mix(vec3(.267,.005,.329),vec3(.282,.341,.718),t*4.);
+  if(t<.5)  return mix(vec3(.282,.341,.718),vec3(.129,.589,.543),(t-.25)*4.);
+  if(t<.75) return mix(vec3(.129,.589,.543),vec3(.478,.794,.322),(t-.5)*4.);
+  return mix(vec3(.478,.794,.322),vec3(.993,.906,.144),(t-.75)*4.);
+}
+vec3 plasma(float t){
+  t=clamp(t,0.,1.);
+  if(t<.25) return mix(vec3(.051,.031,.529),vec3(.600,.090,.612),t*4.);
+  if(t<.5)  return mix(vec3(.600,.090,.612),vec3(.871,.278,.447),(t-.25)*4.);
+  if(t<.75) return mix(vec3(.871,.278,.447),vec3(.984,.561,.157),(t-.5)*4.);
+  return mix(vec3(.984,.561,.157),vec3(.940,.975,.131),(t-.75)*4.);
+}
+vec3 magma(float t){
+  t=clamp(t,0.,1.);
+  if(t<.25) return mix(vec3(.000,.000,.016),vec3(.439,.102,.431),t*4.);
+  if(t<.5)  return mix(vec3(.439,.102,.431),vec3(.847,.337,.408),(t-.25)*4.);
+  if(t<.75) return mix(vec3(.847,.337,.408),vec3(.988,.702,.490),(t-.5)*4.);
+  return mix(vec3(.988,.702,.490),vec3(.988,1.000,.600),(t-.75)*4.);
+}
+vec3 getCol(float t){
+  if(uColormap==1) return plasma(t);
+  if(uColormap==2) return magma(t);
+  return viridis(t);
+}
+
+float radialR(float r, int n, int l){
+  if(n==1) return exp(-r);
+  if(n==2){
+    if(l==0) return (2.-r)*exp(-r*.5);
+    return r*exp(-r*.5);
+  }
+  if(n==3){
+    if(l==0) return (27.-18.*r+2.*r*r)*exp(-r/3.);
+    if(l==1) return r*(6.-r)*exp(-r/3.);
+    return r*r*exp(-r/3.);
+  }
+  // n==4
+  float rho=r*.5;
+  if(l==0) return (24.-36.*rho+12.*rho*rho-rho*rho*rho)*exp(-rho*.5);
+  if(l==1) return rho*(20.-10.*rho+rho*rho)*exp(-rho*.5);
+  if(l==2) return rho*rho*(6.-rho)*exp(-rho*.5);
+  return rho*rho*rho*exp(-rho*.5);
+}
+
+float harmonicY(int l, int m, vec3 d){
+  float x=d.x,y=d.y,z=d.z;
+  if(l==0) return 1.;
+  if(l==1){
+    if(m== 0) return z;
+    if(m== 1) return x;
+    if(m==-1) return y;
+  }
+  if(l==2){
+    if(m== 0) return 2.*z*z-x*x-y*y;
+    if(m== 1) return x*z;
+    if(m==-1) return y*z;
+    if(m== 2) return x*x-y*y;
+    if(m==-2) return x*y;
+  }
+  if(l==3){
+    if(m== 0) return z*(5.*z*z-3.);
+    if(m== 1) return x*(5.*z*z-1.);
+    if(m==-1) return y*(5.*z*z-1.);
+    if(m== 2) return z*(x*x-y*y);
+    if(m==-2) return x*y*z;
+    if(m== 3) return x*(x*x-3.*y*y);
+    if(m==-3) return y*(3.*x*x-y*y);
+  }
+  return 0.;
+}
+
+float psiAt(vec3 pr, int n, int l, int m){
+  float r=length(pr);
+  vec3 nd= r>0.0001 ? pr/r : vec3(0,0,1);
+  return radialR(r,n,l)*harmonicY(l,m,nd);
+}
+
+void main(){
+  vec3 ro=uCamPos;
+  vec3 rd=normalize(vWorldPos-uCamPos);
+  vec3 bh=vec3(uBoxHalf);
+  vec3 t0=((-bh)-ro)/rd, t1=(bh-ro)/rd;
+  vec3 tNv=min(t0,t1), tFv=max(t0,t1);
+  float tN=max(max(tNv.x,tNv.y),tNv.z);
+  float tF=min(min(tFv.x, tFv.y), tFv.z);
+  if(tN>=tF||tF<0.001) discard;
+  tN=max(tN,0.001);
+
+  const int STEPS=80;
+  float ss=(tF-tN)/float(STEPS);
+  vec4 acc=vec4(0);
+
+  for(int i=0;i<STEPS;i++){
+    float t=tN+(float(i)+.5)*ss;
+    vec3 wp=ro+rd*t;
+    vec3 pr=wp/uBohrScale;
+    float dens;
+    if(uSuperpose){
+      float p1=psiAt(pr,uN,uL,uM);
+      float p2=psiAt(pr,uN2,uL2,uM2);
+      float cross=2.*uC1*uC2*p1*p2*cos(uTime*1.5);
+      dens=max(0.,uC1*uC1*p1*p1+uC2*uC2*p2*p2+cross);
+    } else {
+      float ps=psiAt(pr,uN,uL,uM);
+      dens=ps*ps;
+    }
+    dens*=uDensityScale;
+    if(dens>0.0004){
+      float a=clamp(dens*ss*14.,0.,.18);
+      vec3 col=getCol(clamp(dens*6.,0.,1.));
+      acc.rgb+=(1.-acc.a)*a*col;
+      acc.a  +=(1.-acc.a)*a;
+    }
+    if(acc.a>0.97) break;
+  }
+  if(acc.a<0.001) discard;
+  gl_FragColor=acc;
+}`;
+
+class QuantumAtom {
+  constructor(scene) {
+    this.scene     = scene;
+    this.root      = new THREE.Group();
+    scene.add(this.root);
+    this._mesh     = null;
+    this._mat      = null;
+    this._time     = 0;
+    this._n = 1; this._l = 0; this._m = 0;
+    this._n2 = 2; this._l2 = 0; this._m2 = 0;
+    this._c1 = 0.707; this._c2 = 0.707;
+    this._superpose = false;
+    this._colormap  = 0;
+    this._rebuild();
+  }
+
+  _rebuild() {
+    if (this._mesh) {
+      this.root.remove(this._mesh);
+      this._mesh.geometry.dispose();
+      if (this._mat) this._mat.dispose();
+      this._mesh = null; this._mat = null;
+    }
+    const bh = qBoxHalf(this._n);
+    const ds = DENSITY_SCALE_MAP[`${this._n},${this._l}`] ?? 0.1;
+    this._mat = new THREE.ShaderMaterial({
+      vertexShader:   QUANTUM_VERT,
+      fragmentShader: QUANTUM_FRAG,
+      uniforms: {
+        uCamPos:       { value: new THREE.Vector3() },
+        uBoxHalf:      { value: bh },
+        uBohrScale:    { value: BOHR_SCALE_Q },
+        uN:            { value: this._n },
+        uL:            { value: this._l },
+        uM:            { value: this._m },
+        uDensityScale: { value: ds },
+        uTime:         { value: 0 },
+        uColormap:     { value: this._colormap },
+        uSuperpose:    { value: this._superpose },
+        uN2:           { value: this._n2 },
+        uL2:           { value: this._l2 },
+        uM2:           { value: this._m2 },
+        uC1:           { value: this._c1 },
+        uC2:           { value: this._c2 },
+      },
+      side:        THREE.BackSide,
+      transparent: true,
+      depthWrite:  false,
+      blending:    THREE.NormalBlending,
+    });
+    const geo = new THREE.BoxGeometry(bh*2, bh*2, bh*2);
+    this._mesh = new THREE.Mesh(geo, this._mat);
+    this.root.add(this._mesh);
+  }
+
+  setOrbital(n, l, m) {
+    const rebuild = (n !== this._n);
+    this._n = n; this._l = l; this._m = m;
+    if (rebuild) { this._rebuild(); return; }
+    this._mat.uniforms.uL.value = l;
+    this._mat.uniforms.uM.value = m;
+    this._mat.uniforms.uDensityScale.value = DENSITY_SCALE_MAP[`${n},${l}`] ?? 0.1;
+  }
+
+  setOrbital2(n2, l2, m2) {
+    this._n2 = n2; this._l2 = l2; this._m2 = m2;
+    if (!this._mat) return;
+    this._mat.uniforms.uN2.value = n2;
+    this._mat.uniforms.uL2.value = l2;
+    this._mat.uniforms.uM2.value = m2;
+  }
+
+  setSuperpose(on) {
+    this._superpose = on;
+    if (this._mat) this._mat.uniforms.uSuperpose.value = on;
+  }
+
+  setMixing(c1frac) {
+    this._c1 = Math.sqrt(c1frac / 100);
+    this._c2 = Math.sqrt(1 - c1frac / 100);
+    if (this._mat) {
+      this._mat.uniforms.uC1.value = this._c1;
+      this._mat.uniforms.uC2.value = this._c2;
+    }
+  }
+
+  setColormap(idx) {
+    this._colormap = idx;
+    if (this._mat) this._mat.uniforms.uColormap.value = idx;
+  }
+
+  measure() {
+    const pick1 = Math.random() < (this._c1 * this._c1);
+    const winner = pick1 ? { n:this._n, l:this._l, m:this._m }
+                         : { n:this._n2, l:this._l2, m:this._m2 };
+    this.setSuperpose(false);
+    this.setOrbital(winner.n, winner.l, winner.m);
+    return winner;
+  }
+
+  getOuterRadius() { return qBoxHalf(this._n) * 0.85; }
+
+  animate(dt, camera) {
+    this._time += dt;
+    if (this._mat) {
+      this._mat.uniforms.uTime.value  = this._time;
+      this._mat.uniforms.uCamPos.value.copy(camera.position);
+    }
+  }
+
+  setVisible(v) { this.root.visible = v; }
+
+  dispose() {
+    if (this._mesh) {
+      this.root.remove(this._mesh);
+      this._mesh.geometry.dispose();
+      if (this._mat) this._mat.dispose();
+    }
+    this.scene.remove(this.root);
+  }
+}
+
 // ─── Raycaster for shell clicking ─────────────────────────────
-let bohrAtom = null;
+let bohrAtom    = null;
+let quantumAtom = null;
 const _raycaster  = new THREE.Raycaster();
 const _mouse      = new THREE.Vector2();
 let   _zoomedIn   = false;
@@ -1407,8 +1790,9 @@ function animate() {
   controls.autoRotateSpeed = 0.5 * animSpeed;
   controls.update();
 
-  // Bohr atom animation
-  if (bohrAtom) bohrAtom.animate(dt, camera, renderer.domElement);
+  // Atom model animation
+  if (bohrAtom    && bohrAtom.root.visible)    bohrAtom.animate(dt, camera, renderer.domElement);
+  if (quantumAtom && quantumAtom.root.visible) quantumAtom.animate(dt, camera);
 
   // drift particles
   if (particles && particles.visible) {
@@ -1639,6 +2023,7 @@ function initUI() {
       t.classList.add('active');
       document.getElementById('panel-element').style.display = t.dataset.panel === 'element' ? '' : 'none';
       document.getElementById('panel-scene').style.display   = t.dataset.panel === 'scene'   ? '' : 'none';
+      document.getElementById('panel-quantum').style.display = t.dataset.panel === 'quantum'  ? '' : 'none';
     }));
 
   // model sidebar
@@ -1651,12 +2036,22 @@ function initUI() {
       router.navigate(`#/model/${modelName}`);
       document.getElementById('status-text').textContent = 'Model: ' + modelName;
 
-      // Show/hide bohr atom
-      if (bohrAtom) {
-        const isBohr = modelName === 'bohr';
-        bohrAtom.setVisible(isBohr);
-        document.getElementById('atom-labels').style.display = isBohr ? '' : 'none';
-        if (isBohr) snapView(state.get('activeView'));
+      // Show/hide models
+      const isBohr    = modelName === 'bohr';
+      const isQuantum = modelName === 'quantum';
+      if (bohrAtom)    { bohrAtom.setVisible(isBohr); }
+      if (quantumAtom) { quantumAtom.setVisible(isQuantum); }
+      document.getElementById('atom-labels').style.display = isBohr ? '' : 'none';
+      if (isBohr || isQuantum) snapView(state.get('activeView'));
+      if (isQuantum) {
+        // Auto-switch to Quantum tab
+        document.querySelectorAll('.tab-item[data-panel]').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('[data-panel]').forEach(x => {
+          if (x.dataset.panel === 'quantum') x.classList.add('active');
+        });
+        document.getElementById('panel-element').style.display = 'none';
+        document.getElementById('panel-scene').style.display   = 'none';
+        document.getElementById('panel-quantum').style.display = '';
       }
     }));
 
@@ -1767,6 +2162,185 @@ function initUI() {
 }
 
 // ──────────────────────────────────────────────────────────────
+// QUANTUM UI
+// ──────────────────────────────────────────────────────────────
+let _qN = 1, _qL = 0, _qM = 0;
+let _qN2 = 2, _qL2 = 0, _qM2 = 0;
+
+function _qOrbName(n, l, m) {
+  const sub = SUBSHELL_NAMES[l] || '?';
+  let base = `${n}${sub}`;
+  if (l > 0) base += ` (m=${m >= 0 ? '+' : ''}${m})`;
+  return base;
+}
+
+function _buildEnergyDiagram(activeN) {
+  const diag = document.getElementById('energy-diagram');
+  if (!diag) return;
+  diag.innerHTML = '';
+  const levels = [
+    { n:1, E:-13.60 }, { n:2, E:-3.40 },
+    { n:3, E:-1.51  }, { n:4, E:-0.85 },
+  ];
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;flex-direction:column;gap:10px;padding:4px 0';
+  levels.forEach(({ n, E }) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:10px;font-family:"JetBrains Mono",monospace';
+    const active = n === activeN;
+    const nLbl = document.createElement('span');
+    nLbl.style.cssText = `color:${active ? '#818cf8' : 'rgba(232,232,240,.4)'};min-width:22px;font-size:10px`;
+    nLbl.textContent = `n=${n}`;
+    const bar = document.createElement('div');
+    bar.style.cssText = `flex:1;height:${active ? 2 : 1}px;background:${active ? '#6366f1' : 'rgba(255,255,255,.12)'};border-radius:1px;${active ? 'box-shadow:0 0 6px #6366f1' : ''}`;
+    const eLbl = document.createElement('span');
+    eLbl.style.cssText = `color:${active ? '#e8e8f0' : 'rgba(232,232,240,.3)'};min-width:58px;text-align:right`;
+    eLbl.textContent = E.toFixed(2) + ' eV';
+    row.appendChild(nLbl); row.appendChild(bar); row.appendChild(eLbl);
+    wrap.appendChild(row);
+  });
+  diag.appendChild(wrap);
+}
+
+function _rebuildLBtns(n, curL, container, onPick) {
+  container.innerHTML = '';
+  for (let l = 0; l < n; l++) {
+    const b = document.createElement('button');
+    b.className = 'orbital-btn' + (l === curL ? ' active' : '');
+    b.textContent = `l=${l} (${SUBSHELL_NAMES[l]})`;
+    b.onclick = () => onPick(l);
+    container.appendChild(b);
+  }
+}
+
+function _rebuildMBtns(l, curM, container, onPick) {
+  container.innerHTML = '';
+  for (let m = -l; m <= l; m++) {
+    const b = document.createElement('button');
+    b.className = 'orbital-btn' + (m === curM ? ' active' : '');
+    b.textContent = `m=${m >= 0 ? '+' : ''}${m}`;
+    b.onclick = () => onPick(m);
+    container.appendChild(b);
+  }
+}
+
+function _updateQuantumDisplay() {
+  document.getElementById('q-orbital-name').textContent = _qOrbName(_qN, _qL, _qM);
+  document.getElementById('q-orbital-energy').textContent = (-13.60 / (_qN * _qN)).toFixed(2) + ' eV';
+  _buildEnergyDiagram(_qN);
+  // Equation overlay
+  const overlay = document.getElementById('eq-overlay');
+  const lbl     = document.getElementById('eq-orbital-label');
+  if (overlay) overlay.style.display = 'block';
+  if (lbl) lbl.textContent = `ψ${_qN}${SUBSHELL_NAMES[_qL]}  n=${_qN}  l=${_qL}  mₗ=${_qM}`;
+  const kEl = document.getElementById('eq-katex-render');
+  if (kEl && window.katex) {
+    try {
+      katex.render(
+        String.raw`\hat{H}\psi = E_n\psi,\quad E_n = \frac{-13.6}{n^2}\,\text{eV}`,
+        kEl, { throwOnError: false, displayMode: false }
+      );
+    } catch(e) { kEl.textContent = 'Ĥψ = Enψ'; }
+  }
+}
+
+function initQuantumUI() {
+  if (!quantumAtom) return;
+
+  // Named callbacks so they can reference themselves without arguments.callee
+  function pickL(l) {
+    _qL = l; _qM = 0;
+    _rebuildLBtns(_qN, _qL, document.getElementById('q-l-btns'), pickL);
+    _rebuildMBtns(_qL, _qM, document.getElementById('q-m-btns'), pickM);
+    quantumAtom.setOrbital(_qN, _qL, _qM);
+    _updateQuantumDisplay();
+  }
+  function pickM(m) {
+    _qM = m;
+    _rebuildMBtns(_qL, _qM, document.getElementById('q-m-btns'), pickM);
+    quantumAtom.setOrbital(_qN, _qL, _qM);
+    _updateQuantumDisplay();
+  }
+  function pickL2(l) {
+    _qL2 = l; _qM2 = 0;
+    _rebuildLBtns(_qN2, _qL2, document.getElementById('q-l2-btns'), pickL2);
+    quantumAtom.setOrbital2(_qN2, _qL2, _qM2);
+  }
+
+  // n-buttons (primary orbital)
+  document.querySelectorAll('[data-qn]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _qN = +btn.dataset.qn;
+      _qL = Math.min(_qL, _qN - 1);
+      _qM = Math.max(-_qL, Math.min(_qL, _qM));
+      document.querySelectorAll('[data-qn]').forEach(b =>
+        b.classList.toggle('active', +b.dataset.qn === _qN));
+      pickL(_qL);
+    });
+  });
+
+  // Build initial l + m buttons
+  _rebuildLBtns(_qN, _qL, document.getElementById('q-l-btns'), pickL);
+  _rebuildMBtns(_qL, _qM, document.getElementById('q-m-btns'), pickM);
+
+  // Colormap buttons
+  [['cm-viridis',0],['cm-plasma',1],['cm-magma',2]].forEach(([id, idx]) => {
+    document.getElementById(id)?.addEventListener('click', () => {
+      ['cm-viridis','cm-plasma','cm-magma'].forEach(i =>
+        document.getElementById(i)?.classList.remove('active'));
+      document.getElementById(id)?.classList.add('active');
+      quantumAtom.setColormap(idx);
+    });
+  });
+
+  // Superposition toggle
+  const superToggle = document.getElementById('q-super-toggle');
+  const superCtrls  = document.getElementById('q-super-controls');
+  superToggle?.addEventListener('change', () => {
+    const on = superToggle.checked;
+    if (superCtrls) superCtrls.style.display = on ? '' : 'none';
+    quantumAtom.setSuperpose(on);
+  });
+
+  // n2 buttons for superposition
+  document.querySelectorAll('[data-qn2]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _qN2 = +btn.dataset.qn2;
+      _qL2 = Math.min(_qL2, _qN2 - 1);
+      _qM2 = 0;
+      document.querySelectorAll('[data-qn2]').forEach(b =>
+        b.classList.toggle('active', +b.dataset.qn2 === _qN2));
+      pickL2(_qL2);
+    });
+  });
+  _rebuildLBtns(_qN2, _qL2, document.getElementById('q-l2-btns'), pickL2);
+
+  // Mixing slider
+  const c1Range = document.getElementById('q-c1-range');
+  c1Range?.addEventListener('input', () => {
+    const vEl = document.getElementById('v-c1');
+    if (vEl) vEl.textContent = c1Range.value;
+    quantumAtom.setMixing(+c1Range.value);
+  });
+
+  // Measure button
+  document.getElementById('measure-btn')?.addEventListener('click', () => {
+    const winner = quantumAtom.measure();
+    _qN = winner.n; _qL = winner.l; _qM = winner.m;
+    document.querySelectorAll('[data-qn]').forEach(b =>
+      b.classList.toggle('active', +b.dataset.qn === _qN));
+    pickL(_qL);
+    const tog = document.getElementById('q-super-toggle');
+    const ctr = document.getElementById('q-super-controls');
+    if (tog) tog.checked = false;
+    if (ctr) ctr.style.display = 'none';
+    gsap.fromTo('#panel-quantum', { opacity: 0.3 }, { opacity: 1, duration: 0.5 });
+  });
+
+  _updateQuantumDisplay();
+}
+
+// ──────────────────────────────────────────────────────────────
 // KEYBOARD
 // ──────────────────────────────────────────────────────────────
 function initKeys() {
@@ -1864,25 +2438,60 @@ async function boot() {
   initUI();
   initKeys();
 
-  // ── Bohr atom: init with Hydrogen ─────────────────────────
+  // ── Init both atom models ─────────────────────────────────
   bohrAtom = new BohrAtom(scene, document.getElementById('atom-labels'));
-  const H = ELEMENTS[0]; // Hydrogen
+  const H = ELEMENTS[0];
   bohrAtom.build(H);
-  // Default model = bohr; ensure UI reflects it
-  state.set('model', 'bohr');
+  bohrAtom.setVisible(false);
+
+  quantumAtom = new QuantumAtom(scene);
+  quantumAtom.setVisible(false);
+
+  // Determine starting model (saved or default = quantum)
+  const initModel = state.get('model') || 'quantum';
+  const startBohr    = initModel === 'bohr';
+  const startQuantum = initModel === 'quantum';
+
+  bohrAtom.setVisible(startBohr);
+  document.getElementById('atom-labels').style.display = startBohr ? '' : 'none';
+  quantumAtom.setVisible(startQuantum);
+
   document.querySelectorAll('.model-item').forEach(x =>
-    x.classList.toggle('active', x.dataset.model === 'bohr'));
+    x.classList.toggle('active', x.dataset.model === initModel));
+
+  // Init quantum UI panel (needs quantumAtom to exist)
+  initQuantumUI();
+
+  if (startQuantum) {
+    // Switch right panel to Quantum tab
+    document.querySelectorAll('.tab-item[data-panel]').forEach(t => t.classList.remove('active'));
+    document.querySelector('[data-panel="quantum"]')?.classList.add('active');
+    document.getElementById('panel-element').style.display = 'none';
+    document.getElementById('panel-scene').style.display   = 'none';
+    document.getElementById('panel-quantum').style.display = '';
+  }
 
   router
     .on('model', name => {
       state.set('model', name);
       document.querySelectorAll('.model-item').forEach(x =>
         x.classList.toggle('active', x.dataset.model === name));
-      if (bohrAtom) {
-        const isBohr = name === 'bohr';
-        bohrAtom.setVisible(isBohr);
-        document.getElementById('atom-labels').style.display = isBohr ? '' : 'none';
+      const isBohr    = name === 'bohr';
+      const isQuantum = name === 'quantum';
+      if (bohrAtom)    bohrAtom.setVisible(isBohr);
+      if (quantumAtom) quantumAtom.setVisible(isQuantum);
+      document.getElementById('atom-labels').style.display = isBohr ? '' : 'none';
+      if (isQuantum) {
+        document.querySelectorAll('.tab-item[data-panel]').forEach(t => t.classList.remove('active'));
+        document.querySelector('[data-panel="quantum"]')?.classList.add('active');
+        document.getElementById('panel-element').style.display = 'none';
+        document.getElementById('panel-scene').style.display   = 'none';
+        document.getElementById('panel-quantum').style.display = '';
+        document.getElementById('eq-overlay').style.display    = 'block';
+      } else {
+        document.getElementById('eq-overlay').style.display = 'none';
       }
+      if (isBohr || isQuantum) snapView(state.get('activeView'));
     })
     .on('element', z => {
       const el = ELEMENTS.find(e => e.z === z);
@@ -1896,10 +2505,13 @@ async function boot() {
   renderer.toneMappingExposure = state.get('exposure');
   controls.autoRotate = state.get('autoRotate');
 
-  // Show H in panel, build shell badges
+  // Show H in element panel
   showElement(H);
-  // Override: make sure Bohr atom is on (showElement's transitionTo skips if already built)
-  bohrAtom.setVisible(true);
+  if (startBohr) bohrAtom.setVisible(true);
+  if (startQuantum) {
+    document.getElementById('eq-overlay').style.display = 'block';
+    _updateQuantumDisplay();
+  }
 
   animate(); // start render loop
 
